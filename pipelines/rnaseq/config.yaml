@@ -1,0 +1,37 @@
+# ---------------------------------------------------------------------------------------------
+# Bulk RNA-seq pipeline configuration (guides/01-rna-seq.md explains every option).
+# Paths may be absolute or relative to this directory.
+# ---------------------------------------------------------------------------------------------
+samples: "samples.tsv"          # columns: sample, fastq_1, fastq_2 (raw paired-end FASTQ)
+outdir: "results"
+
+# One genome for a normal run. List two or more genomes for mixed-species samples: reads are
+# assigned to a species with BBSplit first, then aligned and counted on their own genome.
+# The FIRST genome is used to infer library strandedness.
+genomes:
+  GRCh38:
+    fasta: "resources/Homo_sapiens.GRCh38.dna.primary_assembly.fa"
+    gtf:   "resources/Homo_sapiens.GRCh38.112.gtf"
+    # star_index: "resources/star_GRCh38"   # optional prebuilt index; must include the GTF
+    #                                         # (built with --sjdbGTFfile) for --quantMode GeneCounts
+# mRatBN7.2:                    # example second genome for human cells grown with rat cells
+#   fasta: "resources/Rattus_norvegicus.mRatBN7.2.dna.toplevel.fa"
+#   gtf:   "resources/Rattus_norvegicus.mRatBN7.2.112.gtf"
+
+# featureCounts -s: "auto" (inferred from STAR's per-strand gene counts; recommended), 0, 1 or 2.
+# Most modern stranded kits (dUTP-based, e.g. Illumina TruSeq Stranded, NEBNext Ultra II
+# Directional, KAPA mRNA HyperPrep) give -s 2. Never guess: check.
+strandedness: "auto"
+
+trim_galore_args:   ""          # Trim Galore defaults (Phred 20, min length 20). Stricter: "-q 30 --length 30"
+star_args:          ""          # STAR defaults. Unique alignments only: "--outFilterMultimapNmax 1"
+featurecounts_args: "-p --countReadPairs -t exon -g gene_id"   # -s is added automatically
+                                # add -O to count reads overlapping >1 gene towards each of them
+sjdb_overhang: 100              # max(read length) - 1; 100 works well for most read lengths
+bigwig_binsize: 10              # 1 = base-pair resolution (much larger files)
+
+bbsplit_ambiguous: "toss"       # reads matching several genomes equally well: toss | best | all
+bbsplit_xmx: "96g"              # BBSplit Java heap: about 10 bytes per reference base
+
+threads: {default: 4, star: 8, trim_galore: 4, featurecounts: 8, bbsplit: 16, bamcoverage: 4}
+mem_mb:  {star: 36000, star_index: 40000}

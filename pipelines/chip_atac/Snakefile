@@ -1,0 +1,307 @@
+# Paired-end ChIP-seq / ATAC-seq: FASTQ -> trimmed reads -> (optional per-species read split) -> bowtie2
+# -> filtered BAM -> MACS2 narrow/broad peaks (per sample AND per merged group) + RPGC bigWigs + QC.
+#
+# Standard filters (proper pairs, MAPQ, duplicate removal, mitochondrial/unplaced contigs, blacklist,
+# Tn5 shift for ATAC, input control for ChIP) are on by default and individually switchable in
+# config.yaml. Mixed-species samples: list two genomes and reads are split with BBSplit first.
+# Walk-throughs: guides/02-atac-seq.md, guides/03-chip-seq.md.
+#
+# Run:  snakemake --use-conda --cores 16 -n    (dry run first), then without -n.
+
+configfile: "config.yaml"
+include: "../common.smk"
+
+SAMPLES = read_samples(config["samples"])        # sample, fastq_1, fastq_2, group, control(optional)
+GENOMES = config["genomes"]
+GENOME_NAMES = list(GENOMES)
+MIXED = len(GENOME_NAMES) > 1
+ASSAY = config["assay"].lower()                  # "atac" | "chip"
+assert ASSAY in ("atac", "chip"), "assay must be 'atac' or 'chip'"
+OUT = config.get("outdir", "results")
+
+MAPQ       = int(config.get("min_mapq", 30))
+MARKDUP    = bool(config.get("remove_duplicates", True))
+ATAC_SHIFT = ASSAY == "atac" and bool(config.get("atac_shift", True))
+USE_CTRL   = bool(config.get("use_controls", True))
+MINFRAG    = int(config.get("min_fragment_length", 0))
+
+# Samples that are only used as controls (input/IgG) are aligned and filtered but get no own peaks.
+CONTROLS = {s["control"] for s in SAMPLES.values() if s.get("control")}
+missing = CONTROLS - set(SAMPLES)
+assert not missing, f"control(s) {missing} named in samples.tsv are not themselves listed as samples"
+TREATED = [s for s in SAMPLES if s not in CONTROLS]
+GROUPS = sorted({SAMPLES[s].get("group") or s for s in TREATED})
+
+wildcard_constraints:
+    sample = "[^./]+", group = "[^./]+", genome = "|".join(GENOME_NAMES), read = "1|2", kind = "narrow|broad"
+
+rule all:
+    input:
+        expand(f"{OUT}/peaks/{{kind}}/{{sample}}.{{genome}}_peaks.{{kind}}Peak", kind=["narrow", "broad"], sample=TREATED, genome=GENOME_NAMES),
+        expand(f"{OUT}/peaks_merged/{{kind}}/{{group}}.{{genome}}_peaks.{{kind}}Peak", kind=["narrow", "broad"], group=GROUPS, genome=GENOME_NAMES),
+        expand(f"{OUT}/bigwig/{{sample}}.{{genome}}.RPGC.bw", sample=SAMPLES, genome=GENOME_NAMES),
+        expand(f"{OUT}/qc/frip/{{sample}}.{{genome}}.txt", sample=TREATED, genome=GENOME_NAMES),
+        expand(f"{OUT}/qc/fragment_size/{{sample}}.{{genome}}.txt", sample=SAMPLES, genome=GENOME_NAMES),
+        expand(f"{OUT}/qc/fingerprint/{{genome}}.png", genome=GENOME_NAMES),
+        [expand(f"{OUT}/qc/tss/{{genome}}.png", genome=[g]) for g in GENOME_NAMES if GENOMES[g].get("gtf")],
+        f"{OUT}/multiqc/multiqc_report.html"
+
+# --- 0-1. Stage, QC, trim ------------------------------------------------------------------------
+rule link_raw:
+    input:  fq1 = lambda w: SAMPLES[w.sample]["fastq_1"], fq2 = lambda w: SAMPLES[w.sample]["fastq_2"]
+    output: fq1 = f"{OUT}/raw/{{sample}}_R1.fastq.gz", fq2 = f"{OUT}/raw/{{sample}}_R2.fastq.gz"
+    shell:  "ln -sf $(realpath {input.fq1}) {output.fq1} && ln -sf $(realpath {input.fq2}) {output.fq2}"
+
+rule fastqc_raw:
+    input:  f"{OUT}/raw/{{sample}}_R{{read}}.fastq.gz"
+    output: f"{OUT}/qc/fastqc_raw/{{sample}}_R{{read}}_fastqc.zip"
+    log:    f"{OUT}/logs/fastqc_raw/{{sample}}_R{{read}}.log"
+    conda:  "../envs/qc.yaml"
+    threads: 2
+    shell:  "fastqc -t {threads} -o {OUT}/qc/fastqc_raw {input} 2> {log}"
+
+rule trim_galore:
+    input:  fq1 = f"{OUT}/raw/{{sample}}_R1.fastq.gz", fq2 = f"{OUT}/raw/{{sample}}_R2.fastq.gz"
+    output: fq1 = f"{OUT}/trimmed/{{sample}}_val_1.fq.gz", fq2 = f"{OUT}/trimmed/{{sample}}_val_2.fq.gz"
+    params: extra = config.get("trim_galore_args", "-q 30 --stringency 3 --length 30")
+    log:    f"{OUT}/logs/trim_galore/{{sample}}.log"
+    conda:  "../envs/qc.yaml"
+    threads: threads("trim_galore", 4)
+    shell:  "trim_galore --paired {params.extra} --cores {threads} --basename {wildcards.sample} "
+            "-o {OUT}/trimmed {input.fq1} {input.fq2} 2> {log}"
+
+rule fastqc_trimmed:
+    input:  f"{OUT}/trimmed/{{sample}}_val_{{read}}.fq.gz"
+    output: f"{OUT}/qc/fastqc_trimmed/{{sample}}_val_{{read}}_fastqc.zip"
+    log:    f"{OUT}/logs/fastqc_trimmed/{{sample}}_{{read}}.log"
+    conda:  "../envs/qc.yaml"
+    threads: 2
+    shell:  "fastqc -t {threads} -o {OUT}/qc/fastqc_trimmed {input} 2> {log}"
+
+# --- 2. Optional per-species split (co-culture, xenograft, or two species pooled in one IP) --------
+rule bbsplit_index:
+    input:  [GENOMES[g]["fasta"] for g in GENOME_NAMES]
+    output: touch(f"{OUT}/ref/bbsplit/index.done")
+    params: refs = " ".join(f"ref_{g}={GENOMES[g]['fasta']}" for g in GENOME_NAMES),
+            xmx = config.get("bbsplit_xmx", "96g")
+    log:    f"{OUT}/logs/bbsplit_index.log"
+    conda:  "../envs/chip_atac.yaml"
+    threads: threads("bbsplit", 16)
+    shell:  "bbsplit.sh -Xmx{params.xmx} threads={threads} build=1 {params.refs} path={OUT}/ref/bbsplit 2> {log}"
+
+rule bbsplit:
+    input:  fq1 = rules.trim_galore.output.fq1, fq2 = rules.trim_galore.output.fq2, idx = rules.bbsplit_index.output
+    output: expand(f"{OUT}/split/{{{{sample}}}}_{{genome}}_{{read}}.fq.gz", genome=GENOME_NAMES, read=[1, 2]),
+            stats = f"{OUT}/split/{{sample}}_refstats.txt"
+    params: amb = config.get("bbsplit_ambiguous", "toss"), xmx = config.get("bbsplit_xmx", "96g")
+    log:    f"{OUT}/logs/bbsplit/{{sample}}.log"
+    conda:  "../envs/chip_atac.yaml"
+    threads: threads("bbsplit", 16)
+    shell:  "bbsplit.sh -Xmx{params.xmx} threads={threads} build=1 path={OUT}/ref/bbsplit "
+            "ambiguous2={params.amb} in={input.fq1} in2={input.fq2} refstats={output.stats} "
+            "basename={OUT}/split/{wildcards.sample}_%_#.fq.gz 2> {log}"
+
+def reads_for(w):
+    if MIXED:
+        return [f"{OUT}/split/{w.sample}_{w.genome}_{r}.fq.gz" for r in (1, 2)]
+    return [f"{OUT}/trimmed/{w.sample}_val_{r}.fq.gz" for r in (1, 2)]
+
+# --- 3. Alignment ----------------------------------------------------------------------------------
+def bt2_index(g):
+    return GENOMES[g].get("bowtie2_index") or f"{OUT}/ref/{g}/bowtie2/{g}"
+
+rule bowtie2_index:
+    input:  lambda w: GENOMES[w.genome]["fasta"]
+    output: multiext(f"{OUT}/ref/{{genome}}/bowtie2/{{genome}}", ".1.bt2", ".2.bt2", ".3.bt2", ".4.bt2", ".rev.1.bt2", ".rev.2.bt2")
+    log:    f"{OUT}/logs/bowtie2_index/{{genome}}.log"
+    conda:  "../envs/chip_atac.yaml"
+    threads: threads("bowtie2", 8)
+    shell:  "bowtie2-build --threads {threads} {input} {OUT}/ref/{wildcards.genome}/bowtie2/{wildcards.genome} > {log} 2>&1"
+
+def bt2_index_files(w):
+    if GENOMES[w.genome].get("bowtie2_index"):
+        return []                               # prebuilt index: trust the user's path
+    return rules.bowtie2_index.output
+
+# Duplicates are marked here (fixmate needs bowtie2's name-grouped output) and removed in filter_bam.
+rule bowtie2:
+    input:  reads = reads_for, idx = bt2_index_files
+    output: bam = f"{OUT}/align/{{sample}}.{{genome}}.raw.bam"
+    params: index = lambda w: bt2_index(w.genome),
+            extra = config.get("bowtie2_args", "--very-sensitive -X 2000")
+    log:    bt2 = f"{OUT}/logs/bowtie2/{{sample}}.{{genome}}.log", md = f"{OUT}/logs/markdup/{{sample}}.{{genome}}.log"
+    conda:  "../envs/chip_atac.yaml"
+    threads: threads("bowtie2", 8)
+    shell:  "bowtie2 {params.extra} -p {threads} -x {params.index} -1 {input.reads[0]} -2 {input.reads[1]} 2> {log.bt2} "
+            "| samtools fixmate -m -@ {threads} - - | samtools sort -@ {threads} -O bam - "
+            "| samtools markdup -@ {threads} -s - {output.bam} 2> {log.md} && samtools index {output.bam}"
+
+# --- 4. Filtering ----------------------------------------------------------------------------------
+# Keep: properly paired, mapped, primary, non-QC-fail, MAPQ >= min_mapq; optionally drop duplicates;
+# drop mitochondrial / unplaced contigs by NAME PATTERN (works for UCSC 'chrM' and Ensembl 'MT' naming,
+# a filter on 'chrM' alone would silently keep Ensembl-named 'MT' reads); then blacklist, optional
+# minimum fragment length and, for ATAC, the Tn5 +4/-5 shift, via deepTools alignmentSieve.
+rule keep_chroms:
+    input:  f"{OUT}/align/{{sample}}.{{genome}}.raw.bam"
+    output: f"{OUT}/align/{{sample}}.{{genome}}.keep_chroms.bed"
+    params: drop = lambda w: GENOMES[w.genome].get("drop_chrom_regex", config["drop_chrom_regex"])
+    conda:  "../envs/chip_atac.yaml"
+    shell:  "samtools view -H {input} | awk -F'\\t' -v re='{params.drop}' "
+            "'$1==\"@SQ\"{{sub(\"SN:\",\"\",$2); sub(\"LN:\",\"\",$3); if ($2 !~ re) print $2\"\\t0\\t\"$3}}' > {output}"
+
+rule filter_bam:
+    input:  bam = f"{OUT}/align/{{sample}}.{{genome}}.raw.bam", keep = rules.keep_chroms.output
+    output: bam = f"{OUT}/filtered/{{sample}}.{{genome}}.bam", bai = f"{OUT}/filtered/{{sample}}.{{genome}}.bam.bai",
+            metrics = f"{OUT}/qc/filter_metrics/{{sample}}.{{genome}}.txt"
+    params: flags = "-F 3852" if MARKDUP else "-F 2828",     # 3852 = 2828 + 1024 (duplicate)
+            mapq = MAPQ, proper = "-f 2",
+            bl = lambda w: (f"--blackListFileName {GENOMES[w.genome]['blacklist']}" if GENOMES[w.genome].get("blacklist") else ""),
+            sieve = ("--ATACshift " if ATAC_SHIFT else "") + (f"--minFragmentLength {MINFRAG}" if MINFRAG else ""),
+            tmp = f"{OUT}/filtered/{{sample}}.{{genome}}"
+    log:    f"{OUT}/logs/filter/{{sample}}.{{genome}}.log"
+    conda:  "../envs/chip_atac.yaml"
+    threads: threads("filter", 4)
+    shell:  """
+        samtools view -@ {threads} -b {params.proper} {params.flags} -q {params.mapq} -L {input.keep} -o {params.tmp}.step1.bam {input.bam}
+        samtools index {params.tmp}.step1.bam
+        alignmentSieve -p {threads} -b {params.tmp}.step1.bam -o {params.tmp}.step2.bam --filterMetrics {output.metrics} \
+            {params.sieve} {params.bl} 2> {log}
+        samtools sort -@ {threads} -o {output.bam} {params.tmp}.step2.bam
+        samtools index {output.bam}
+        rm -f {params.tmp}.step1.bam {params.tmp}.step1.bam.bai {params.tmp}.step2.bam
+        """
+
+# --- 5. Effective genome size (MACS2 -g / bamCoverage RPGC) ---------------------------------------
+# Either a known value (MACS2 'hs' = 2.7e9) or 'auto' = the number of non-N bases in the FASTA.
+rule effective_genome_size:
+    input:  lambda w: GENOMES[w.genome]["fasta"]
+    output: f"{OUT}/ref/{{genome}}/effective_genome_size.txt"
+    run:
+        given = GENOMES[wildcards.genome].get("effective_genome_size", "auto")
+        if str(given) != "auto":
+            n = int(given)
+        else:
+            import gzip
+            opener = gzip.open if input[0].endswith(".gz") else open
+            n = 0
+            with opener(input[0], "rt") as fh:
+                for line in fh:
+                    if not line.startswith(">"):
+                        s = line.strip().upper()
+                        n += len(s) - s.count("N")
+        open(output[0], "w").write(f"{n}\n")
+
+# --- 6. Coverage tracks --------------------------------------------------------------------------
+rule bamcoverage:
+    input:  bam = rules.filter_bam.output.bam, gs = f"{OUT}/ref/{{genome}}/effective_genome_size.txt"
+    output: f"{OUT}/bigwig/{{sample}}.{{genome}}.RPGC.bw"
+    params: bs = config.get("bigwig_binsize", 10),
+            ignore = config.get("ignore_for_normalization", "chrX chrY X Y")
+    log:    f"{OUT}/logs/bamCoverage/{{sample}}.{{genome}}.log"
+    conda:  "../envs/chip_atac.yaml"
+    threads: threads("bamcoverage", 4)
+    shell:  "bamCoverage -p {threads} -b {input.bam} -o {output} --binSize {params.bs} --normalizeUsing RPGC "
+            "--effectiveGenomeSize $(cat {input.gs}) --ignoreForNormalization {params.ignore} 2> {log}"
+
+# --- 7. Peak calling -------------------------------------------------------------------------------
+def control_bam(w, genome=None):
+    c = SAMPLES.get(getattr(w, "sample", ""), {}).get("control")
+    if not (USE_CTRL and c):
+        return []
+    return [f"{OUT}/filtered/{c}.{w.genome}.bam"]
+
+rule macs2:
+    input:  bam = rules.filter_bam.output.bam, ctrl = control_bam, gs = f"{OUT}/ref/{{genome}}/effective_genome_size.txt"
+    output: f"{OUT}/peaks/{{kind}}/{{sample}}.{{genome}}_peaks.{{kind}}Peak"
+    params: broad = lambda w: "--broad" if w.kind == "broad" else "",
+            ctrl = lambda w, input: f"-c {input.ctrl}" if input.ctrl else "",
+            extra = config.get("macs2_args", "-f BAMPE --keep-dup all"),
+            outdir = f"{OUT}/peaks/{{kind}}"
+    log:    f"{OUT}/logs/macs2/{{sample}}.{{genome}}.{{kind}}.log"
+    conda:  "../envs/chip_atac.yaml"
+    shell:  "macs2 callpeak {params.extra} {params.broad} -t {input.bam} {params.ctrl} -g $(cat {input.gs}) "
+            "-n {wildcards.sample}.{wildcards.genome} --outdir {params.outdir} 2> {log}"
+
+# Paper: "peaks were called using merged .bam files containing reads from all the samples for each species".
+def group_members(group):
+    return [s for s in TREATED if (SAMPLES[s].get("group") or s) == group]
+
+rule merge_group:
+    input:  lambda w: expand(f"{OUT}/filtered/{{s}}.{w.genome}.bam", s=group_members(w.group))
+    output: f"{OUT}/merged/{{group}}.{{genome}}.bam"
+    conda:  "../envs/chip_atac.yaml"
+    threads: threads("filter", 4)
+    shell:  "samtools merge -f -@ {threads} {output} {input} && samtools index {output}"
+
+def group_controls(w):
+    if not USE_CTRL:
+        return []
+    cs = sorted({SAMPLES[s]["control"] for s in group_members(w.group) if SAMPLES[s].get("control")})
+    return [f"{OUT}/filtered/{c}.{w.genome}.bam" for c in cs]
+
+rule macs2_merged:
+    input:  bam = rules.merge_group.output, ctrl = group_controls, gs = f"{OUT}/ref/{{genome}}/effective_genome_size.txt"
+    output: f"{OUT}/peaks_merged/{{kind}}/{{group}}.{{genome}}_peaks.{{kind}}Peak"
+    params: broad = lambda w: "--broad" if w.kind == "broad" else "",
+            ctrl = lambda w, input: ("-c " + " ".join(input.ctrl)) if input.ctrl else "",
+            extra = config.get("macs2_args", "-f BAMPE --keep-dup all"),
+            outdir = f"{OUT}/peaks_merged/{{kind}}"
+    log:    f"{OUT}/logs/macs2_merged/{{group}}.{{genome}}.{{kind}}.log"
+    conda:  "../envs/chip_atac.yaml"
+    shell:  "macs2 callpeak {params.extra} {params.broad} -t {input.bam} {params.ctrl} -g $(cat {input.gs}) "
+            "-n {wildcards.group}.{wildcards.genome} --outdir {params.outdir} 2> {log}"
+
+# --- 8. QC -----------------------------------------------------------------------------------------
+# FRiP: fraction of filtered read-pairs inside the sample's own narrow peaks (ENCODE: ATAC > 0.2, TF ChIP > 0.01).
+rule frip:
+    input:  bam = rules.filter_bam.output.bam, peaks = f"{OUT}/peaks/narrow/{{sample}}.{{genome}}_peaks.narrowPeak"
+    output: f"{OUT}/qc/frip/{{sample}}.{{genome}}.txt"
+    conda:  "../envs/chip_atac.yaml"
+    shell:  """
+        total=$(samtools view -c -f 64 {input.bam})
+        inpk=$(bedtools intersect -u -a {input.bam} -b {input.peaks} | samtools view -c -f 64 -)
+        awk -v s={wildcards.sample} -v t=$total -v p=$inpk 'BEGIN{{printf "sample\\ttotal_pairs\\tpairs_in_peaks\\tFRiP\\n%s\\t%d\\t%d\\t%.4f\\n", s, t, p, (t>0?p/t:0)}}' > {output}
+        """
+
+rule fragment_size:            # insert-size histogram (TLEN of first-in-pair)
+    input:  rules.filter_bam.output.bam
+    output: f"{OUT}/qc/fragment_size/{{sample}}.{{genome}}.txt"
+    conda:  "../envs/chip_atac.yaml"
+    shell:  "samtools view {input} | awk '$9>0{{print $9}}' | sort -n | uniq -c | awk '{{print $2\"\\t\"$1}}' > {output}"
+
+rule fingerprint:              # ChIP enrichment strength / ATAC signal-to-noise across all samples
+    input:  expand(f"{OUT}/filtered/{{sample}}.{{{{genome}}}}.bam", sample=SAMPLES)
+    output: png = f"{OUT}/qc/fingerprint/{{genome}}.png", metrics = f"{OUT}/qc/fingerprint/{{genome}}.tsv"
+    params: labels = " ".join(SAMPLES)
+    log:    f"{OUT}/logs/fingerprint/{{genome}}.log"
+    conda:  "../envs/chip_atac.yaml"
+    threads: threads("bamcoverage", 4)
+    shell:  "plotFingerprint -p {threads} -b {input} --labels {params.labels} --skipZeros "
+            "--plotFile {output.png} --outQualityMetrics {output.metrics} 2> {log}"
+
+rule tss_bed:
+    input:  lambda w: GENOMES[w.genome]["gtf"]
+    output: f"{OUT}/ref/{{genome}}/tss.bed"
+    shell:  "(zcat -f {input}) | awk -F'\\t' '$3==\"gene\"{{p=($7==\"+\")?$4-1:$5-1; print $1\"\\t\"p\"\\t\"p+1\"\\t.\\t.\\t\"$7}}' "
+            "| sort -k1,1 -k2,2n -u > {output}"
+
+rule tss_enrichment:           # ATAC: expect a sharp TSS peak (ENCODE TSS enrichment > 7 for hg38)
+    input:  bw = expand(f"{OUT}/bigwig/{{sample}}.{{{{genome}}}}.RPGC.bw", sample=SAMPLES), tss = rules.tss_bed.output
+    output: mat = f"{OUT}/qc/tss/{{genome}}.mat.gz", png = f"{OUT}/qc/tss/{{genome}}.png"
+    params: labels = " ".join(SAMPLES)
+    log:    f"{OUT}/logs/tss/{{genome}}.log"
+    conda:  "../envs/chip_atac.yaml"
+    threads: threads("bamcoverage", 4)
+    shell:  "computeMatrix reference-point -p {threads} --referencePoint TSS -a 2000 -b 2000 -S {input.bw} "
+            "--samplesLabel {params.labels} -R {input.tss} --skipZeros -o {output.mat} 2> {log} && "
+            "plotProfile -m {output.mat} -o {output.png} --perGroup 2>> {log}"
+
+rule multiqc:
+    input:  expand(f"{OUT}/qc/fastqc_trimmed/{{sample}}_val_{{read}}_fastqc.zip", sample=SAMPLES, read=[1, 2]),
+            expand(f"{OUT}/qc/fastqc_raw/{{sample}}_R{{read}}_fastqc.zip", sample=SAMPLES, read=[1, 2]),
+            expand(f"{OUT}/peaks/narrow/{{sample}}.{{genome}}_peaks.narrowPeak", sample=TREATED, genome=GENOME_NAMES),
+            expand(f"{OUT}/qc/fingerprint/{{genome}}.tsv", genome=GENOME_NAMES)
+    output: f"{OUT}/multiqc/multiqc_report.html"
+    log:    f"{OUT}/logs/multiqc.log"
+    conda:  "../envs/qc.yaml"
+    shell:  "multiqc -f -c multiqc_config.yaml -o {OUT}/multiqc {OUT} 2> {log}"

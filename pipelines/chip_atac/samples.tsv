@@ -1,0 +1,9 @@
+# Tab-separated, one row per library; no dots in sample names.
+# group   = samples pooled for an extra merged peak call (e.g. all replicates of a condition)
+# control = `sample` name of this library's input/IgG control (ChIP only; controls must also be
+#           listed as rows). Leave empty for ATAC-seq.
+sample	fastq_1	fastq_2	group	control
+ctrl_rep1	fastq/ctrl_rep1_R1.fastq.gz	fastq/ctrl_rep1_R2.fastq.gz	ctrl	
+ctrl_rep2	fastq/ctrl_rep2_R1.fastq.gz	fastq/ctrl_rep2_R2.fastq.gz	ctrl	
+treat_rep1	fastq/treat_rep1_R1.fastq.gz	fastq/treat_rep1_R2.fastq.gz	treat	
+treat_rep2	fastq/treat_rep2_R1.fastq.gz	fastq/treat_rep2_R2.fastq.gz	treat	

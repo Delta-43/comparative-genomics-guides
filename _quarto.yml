@@ -1,0 +1,111 @@
+# Static website for the guides (Quarto, like hbctraining's current courses, e.g. Intro-to-scRNAseq).
+# Build:   quarto render          -> _site/
+# Preview: quarto preview         -> live-reloading local server
+# Deploy:  .github/workflows/publish.yml (GitHub Pages)
+project:
+  type: website
+  output-dir: _site
+  # Explicit list of pages to publish (build with tools/build_site.sh).
+  render:
+    - index.qmd
+    - about.qmd
+    - guides/00-getting-started.md
+    - guides/01-rna-seq.md
+    - guides/02-atac-seq.md
+    - guides/03-chip-seq.md
+    - guides/04-hic.md
+    - guides/05-scrna-seq.md
+    - guides/appendix-comparative-genomics.md
+    - pipelines/README.md
+
+website:
+  title: "Functional Genomics Guides"
+  description: "Open, step-by-step guides from raw sequencing reads to biological inference: RNA-seq, ATAC-seq, ChIP-seq, Hi-C and scRNA-seq."
+  site-url: "https://delta-43.github.io/comparative-genomics-guides/"
+  repo-url: "https://github.com/Delta-43/comparative-genomics-guides"
+  repo-actions: [source, issue]
+  page-navigation: true
+  back-to-top-navigation: true
+  bread-crumbs: true
+  search:
+    location: navbar
+    type: overlay
+  navbar:
+    left:
+      - text: "Home"
+        href: index.qmd
+      - text: "Getting started"
+        href: guides/00-getting-started.md
+      - text: "Guides"
+        menu:
+          - text: "RNA-seq"
+            href: guides/01-rna-seq.md
+          - text: "ATAC-seq"
+            href: guides/02-atac-seq.md
+          - text: "ChIP-seq"
+            href: guides/03-chip-seq.md
+          - text: "Hi-C"
+            href: guides/04-hic.md
+          - text: "scRNA-seq"
+            href: guides/05-scrna-seq.md
+          - text: "---"
+          - text: "Comparative genomics (appendix)"
+            href: guides/appendix-comparative-genomics.md
+      - text: "Pipelines"
+        href: pipelines/README.md
+      - text: "About"
+        href: about.qmd
+    right:
+      - icon: github
+        href: "https://github.com/Delta-43/comparative-genomics-guides"
+        aria-label: "Source on GitHub"
+  sidebar:
+    - title: "Guides"
+      style: docked
+      contents:
+        - href: guides/00-getting-started.md
+          text: "Getting started"
+        - section: "Bulk transcriptomics"
+          contents:
+            - href: guides/01-rna-seq.md
+              text: "RNA-seq"
+        - section: "Chromatin"
+          contents:
+            - href: guides/02-atac-seq.md
+              text: "ATAC-seq"
+            - href: guides/03-chip-seq.md
+              text: "ChIP-seq"
+            - href: guides/04-hic.md
+              text: "Hi-C"
+        - section: "Single cell"
+          contents:
+            - href: guides/05-scrna-seq.md
+              text: "scRNA-seq"
+        - section: "Across species"
+          contents:
+            - href: guides/appendix-comparative-genomics.md
+              text: "Comparative genomics"
+        - text: "---"
+        - href: pipelines/README.md
+          text: "Processing pipelines"
+  page-footer:
+    left: "© Debadeep Chaudhury"   # add the licence here once chosen
+    right: "Built with [Quarto](https://quarto.org) · Inspired by [HBC Training](https://github.com/hbctraining)"
+
+format:
+  html:
+    theme:
+      light: [cosmo, assets/site.scss]
+      dark: [darkly, assets/site.scss]
+    respect-user-color-scheme: true
+    toc: true
+    toc-depth: 3
+    toc-title: "On this page"
+    number-sections: false
+    code-copy: true
+    code-overflow: wrap
+    anchor-sections: true
+    smooth-scroll: true
+    link-external-newwindow: true
+    grid:
+      body-width: 860px

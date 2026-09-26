@@ -1,0 +1,11 @@
+# Splice-aware alignment (STAR), gene counting (featureCounts), coverage tracks, read splitting.
+channels: [conda-forge, bioconda]
+dependencies:
+  - star=2.7.10b
+  - subread=2.0.3
+  - samtools=1.17
+  - deeptools=3.5.1
+  - matplotlib-base<3.9   # deepTools 3.5.1 uses matplotlib.cm.register_cmap, removed in 3.9
+  - rseqc=5.0.3
+  - bbmap=39.01
+  - pigz

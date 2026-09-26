@@ -1,0 +1,55 @@
+# 10x Genomics scRNA-seq (+ CITE-seq / hashtag antibody capture): consensus-genome Cell Ranger
+# reference -> cellranger count -> filtered feature-barcode matrix (input of guides/05-scrna-seq.md
+# Part B). Supports Gene Expression alone or together with Antibody Capture (CITE-seq / cell hashing).
+#
+# Cell Ranger is not on conda (10x licence): install it yourself and set `cellranger` in config.yaml.
+# Run: snakemake --cores 32 -n, then without -n.
+
+configfile: "config.yaml"
+include: "../common.smk"
+
+RUNS = read_samples(config["runs"])  # sample = run id; libraries = Cell Ranger libraries CSV (its fastqs paths must be absolute); feature_ref = CSV or ""
+OUT = config.get("outdir", "results")
+CR = config.get("cellranger", "cellranger")
+REF = config["reference"]
+
+wildcard_constraints: sample = "[^./]+"
+
+rule all:
+    input: expand(f"{OUT}/{{sample}}/outs/filtered_feature_bc_matrix.h5", sample=RUNS)
+
+# mkgtf keeps protein-coding/lncRNA/IG/TR biotypes (10x recommendation) so reads are not lost to
+# overlapping pseudogene/readthrough models that make them multi-mapped.
+rule mkgtf:
+    input:  REF["gtf"]
+    output: f"{OUT}/ref/{REF['name']}.filtered.gtf"
+    params: attrs = " ".join(f"--attribute=gene_biotype:{b}" for b in REF.get("biotypes", ["protein_coding", "lncRNA"]))
+    shell:  "{CR} mkgtf {input} {output} {params.attrs}"
+
+rule mkref:
+    input:  fa = REF["fasta"], gtf = rules.mkgtf.output
+    output: f"{OUT}/ref/{REF['name']}/reference.json"
+    params: name = REF["name"], fa = os.path.abspath(REF["fasta"])
+    threads: threads("cellranger", 16)
+    resources: mem_mb = mem_mb("cellranger", 64000)
+    shell:  "cd {OUT}/ref && rm -rf {params.name} && {CR} mkref --genome={params.name} --fasta={params.fa} "
+            "--genes={params.name}.filtered.gtf --nthreads={threads}"
+
+def ref_dir(w):
+    return os.path.abspath(REF.get("prebuilt") or f"{OUT}/ref/{REF['name']}")
+
+rule count:
+    input:  lib = lambda w: RUNS[w.sample]["libraries"],
+            fref = lambda w: RUNS[w.sample].get("feature_ref") or [],
+            ref = lambda w: [] if REF.get("prebuilt") else rules.mkref.output
+    output: f"{OUT}/{{sample}}/outs/filtered_feature_bc_matrix.h5"
+    params: ref = ref_dir, lib = lambda w: os.path.abspath(RUNS[w.sample]["libraries"]),
+            fref = lambda w, input: f"--feature-ref={os.path.abspath(input.fref)}" if input.fref else "",
+            log = lambda w: os.path.abspath(f"{OUT}/logs/{w.sample}.count.log"),
+            extra = config.get("count_args", "--create-bam=true --r1-length=26"), mem = lambda w, resources: resources.mem_mb // 1000
+    threads: threads("cellranger", 16)
+    resources: mem_mb = mem_mb("cellranger", 64000)
+    log:    f"{OUT}/logs/{{sample}}.count.log"
+    shell:  "rm -rf {OUT}/{wildcards.sample} && cd {OUT} && {CR} count --id={wildcards.sample} "
+            "--libraries={params.lib} --transcriptome={params.ref} {params.fref} {params.extra} "
+            "--localcores={threads} --localmem={params.mem} > {params.log} 2>&1"

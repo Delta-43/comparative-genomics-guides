@@ -1,0 +1,42 @@
+# ---------------------------------------------------------------------------------------------
+# ChIP-seq / ATAC-seq pipeline configuration (guides/02-atac-seq.md and guides/03-chip-seq.md).
+# Paths may be absolute or relative to this directory.
+# ---------------------------------------------------------------------------------------------
+assay: "atac"                   # "atac" or "chip"
+samples: "samples.tsv"          # columns: sample, fastq_1, fastq_2, group, control
+outdir: "results"
+
+# Read filters, all on by default (see the guides for pros and cons of each)
+min_mapq: 30                    # drop multi-mapping / low-confidence alignments (0 = keep all)
+remove_duplicates: true         # pair-aware duplicate removal (samtools markdup)
+atac_shift: true                # ATAC only: Tn5 +4/-5 shift (needed for footprinting)
+use_controls: true              # ChIP: give MACS2 the input/IgG library named in `control`
+min_fragment_length: 0          # drop fragments shorter than this (0 = off)
+
+# One genome for a normal run. List two genomes for mixed-species samples (reads are split by
+# species with BBSplit before alignment).
+genomes:
+  GRCh38:
+    fasta: "resources/GRCh38.primary_assembly.fa"
+    # bowtie2_index: "resources/bowtie2/GRCh38"   # optional prebuilt index prefix
+    gtf: "resources/gencode.v46.annotation.gtf"   # optional: enables the TSS-enrichment plot
+    blacklist: "resources/hg38-blacklist.v2.bed"  # optional; ENCODE blacklist (Amemiya et al. 2019).
+    #   Chromosome names must match the FASTA ('chr1' vs '1').
+    effective_genome_size: 2884242992  # deepTools table, GRCh38, 150 bp reads; "auto" = non-N bases
+# mm39:
+#   fasta: "resources/mm39.fa"
+#   effective_genome_size: 2495461690  # deepTools table, GRCm39, 150 bp reads
+
+# Contigs removed from filtered BAMs: mitochondria + unplaced/alt contigs, UCSC and Ensembl naming.
+drop_chrom_regex: "^(chrM|MT|M|chrUn.*|Un.*|.*_random|.*_alt|.*_fix|KI[0-9].*|GL[0-9].*|JH[0-9].*|NW_.*)$"
+
+trim_galore_args: ""            # Trim Galore defaults
+bowtie2_args:     "--very-sensitive -X 2000"     # -X 2000 keeps long (multi-nucleosome) fragments
+macs2_args:       "-f BAMPE --keep-dup all"      # BAMPE uses real fragment sizes; dups already removed
+bigwig_binsize: 10
+ignore_for_normalization: "chrX chrY X Y"
+
+bbsplit_ambiguous: "toss"       # reads matching several genomes equally well are discarded
+bbsplit_xmx: "96g"
+
+threads: {default: 4, bowtie2: 8, trim_galore: 4, filter: 4, bbsplit: 16, bamcoverage: 4}

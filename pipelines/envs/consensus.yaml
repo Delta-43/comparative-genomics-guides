@@ -1,0 +1,15 @@
+# UCSC kent utilities + multiz + Biopython for the consensus-genome build.
+channels: [conda-forge, bioconda]
+dependencies:
+  - ucsc-chainnet
+  - ucsc-nettoaxt
+  - ucsc-axttomaf
+  - ucsc-fasize
+  - ucsc-fatotwobit
+  - ucsc-twobitinfo
+  - multiz
+  - biopython
+  - python=3.10
+  - samtools=1.17
+  - star=2.7.10b
+  - bowtie2=2.5.1

@@ -1,0 +1,14 @@
+# 10x Genomics scRNA-seq pipeline configuration (guides/05-scrna-seq.md).
+runs: "runs.tsv"                 # sample (= run id), libraries (Cell Ranger libraries CSV), feature_ref (CSV or empty)
+outdir: "results"
+cellranger: "cellranger"         # path to the Cell Ranger binary (>= 8.0: --create-bam is required from 8.0 on; older versions use --no-bam instead)
+reference:
+  name: "GRCh38_custom"          # only used when building a reference with mkref
+  fasta: "resources/Homo_sapiens.GRCh38.dna.primary_assembly.fa"
+  gtf:   "resources/Homo_sapiens.GRCh38.112.gtf"
+  biotypes: [protein_coding, lncRNA, IG_C_gene, IG_D_gene, IG_J_gene, IG_V_gene, TR_C_gene, TR_D_gene, TR_J_gene, TR_V_gene]
+  # Recommended for human/mouse: skip mkref and use 10x's prebuilt reference, e.g.
+  # prebuilt: "resources/refdata-gex-GRCh38-2024-A"
+count_args: "--create-bam=true"  # add e.g. --r1-length=26 if R1 was sequenced longer than the barcode+UMI
+threads: {cellranger: 16}
+mem_mb:  {cellranger: 64000}

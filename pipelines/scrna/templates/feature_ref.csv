@@ -1,0 +1,5 @@
+id,name,read,pattern,sequence,feature_type
+HHT01,Human_Hashtag_01_0251,R2,5PNNNNNNNNNN(BC),GTCAACTCTTTAGCG,Antibody Capture
+HHT02,Human_Hashtag_02_0252,R2,5PNNNNNNNNNN(BC),TGATGGCCTATTGGG,Antibody Capture
+HHT03,Human_Hashtag_03_0253,R2,5PNNNNNNNNNN(BC),TTCCGCCTCTCTTTG,Antibody Capture
+HHT04,Human_Hashtag_04_0254,R2,5PNNNNNNNNNN(BC),AGTAAGTTCAGCGTA,Antibody Capture

@@ -1,0 +1,7 @@
+# Read trimming and quality control.
+channels: [conda-forge, bioconda]
+dependencies:
+  - trim-galore=0.6.7
+  - cutadapt
+  - fastqc=0.12.1
+  - multiqc=1.21

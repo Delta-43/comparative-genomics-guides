@@ -1,0 +1,5 @@
+# regex (matched against the ENA sample alias)	species	genome
+# Mapping for the example study's public sample names (Ciuba et al. 2025, ArrayExpress E-MTAB-13252..13259).
+^(ELE10|ELE30|AG93|AG94|AG9319|AG9429|Primary.?Fetal)	human	hg38
+^(SandraA|Mandy)	chimp	panTro6
+^Becky	macaque	rheMac10

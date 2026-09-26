@@ -1,0 +1,107 @@
+# Consensus ("masked") reference genome for cross-species read alignment.
+#
+# Keeps one reference assembly's coordinates (e.g. hg38) but replaces every base that differs from
+# an aligned species (e.g. chimpanzee, macaque) with N, so reads from all species align to one
+# genome without favouring the reference species, and the reference's gene annotation still
+# applies. Pairwise UCSC chain files -> nets -> axt -> MAF -> progressive multiz -> masking.
+# Background and trade-offs: guides/appendix-comparative-genomics.md.
+#
+# Run: snakemake --use-conda --cores 8 -n  (dry run), then without -n.
+# Needs ~60 GB disk and ~8 GB RAM for three primate genomes.
+
+configfile: "config.yaml"
+
+TARGET  = config["target"]                  # "hg38"
+QUERIES = config["queries"]                 # ["panTro6", "rheMac10"] (order = multiz order)
+NAME    = config["name"]                    # output prefix
+OUT     = config.get("outdir", "results")
+UCSC    = "rsync://hgdownload.soe.ucsc.edu/goldenPath"
+
+def cap(s): return s[0].upper() + s[1:]
+
+rule all:
+    input:
+        f"{OUT}/{NAME}.consensus.ucsc.fa",
+        f"{OUT}/{NAME}.consensus.ensembl.fa",
+        f"{OUT}/{NAME}.masking_summary.txt"
+
+# --- 1. Downloads from UCSC --------------------------------------------------------------------------
+rule download_genome:
+    output: fa = f"{OUT}/genomes/{{g}}/{{g}}.fa", twobit = f"{OUT}/genomes/{{g}}/{{g}}.2bit",
+            sizes = f"{OUT}/genomes/{{g}}/{{g}}.chrom.sizes"
+    shell:  """
+        rsync -aP {UCSC}/{wildcards.g}/bigZips/{{{wildcards.g}.2bit,{wildcards.g}.chrom.sizes,{wildcards.g}.fa.gz}} {OUT}/genomes/{wildcards.g}/
+        gzip -df {OUT}/genomes/{wildcards.g}/{wildcards.g}.fa.gz
+        """
+
+rule download_chain:
+    output: f"{OUT}/chains/{TARGET}To{{Q}}.over.chain"
+    shell:  "rsync -aP {UCSC}/{TARGET}/liftOver/{TARGET}To{wildcards.Q}.over.chain.gz {output}.gz && gzip -df {output}.gz"
+
+# --- 2. Pairwise chain -> net -> axt -> maf (reference = target) ---------------------------------
+rule chain_net:
+    input:  chain = lambda w: f"{OUT}/chains/{TARGET}To{cap(w.q)}.over.chain",
+            t = f"{OUT}/genomes/{TARGET}/{TARGET}.chrom.sizes", q = f"{OUT}/genomes/{{q}}/{{q}}.chrom.sizes"
+    output: tnet = f"{OUT}/net/{TARGET}.{{q}}.net", qnet = f"{OUT}/net/{{q}}.{TARGET}.net"
+    conda:  "../envs/consensus.yaml"
+    shell:  "chainNet {input.chain} {input.t} {input.q} {output.tnet} {output.qnet}"
+
+# netToAxt takes the target-side net (the first chainNet output).
+rule net_to_axt:
+    input:  net = rules.chain_net.output.tnet, chain = rules.chain_net.input.chain,
+            t = f"{OUT}/genomes/{TARGET}/{TARGET}.2bit", q = f"{OUT}/genomes/{{q}}/{{q}}.2bit"
+    output: f"{OUT}/axt/{TARGET}.{{q}}.axt"
+    conda:  "../envs/consensus.yaml"
+    shell:  "netToAxt {input.net} {input.chain} {input.t} {input.q} stdout | axtSort stdin {output}"
+
+rule axt_to_maf:
+    input:  axt = rules.net_to_axt.output,
+            t = f"{OUT}/genomes/{TARGET}/{TARGET}.chrom.sizes", q = f"{OUT}/genomes/{{q}}/{{q}}.chrom.sizes"
+    output: f"{OUT}/maf/{TARGET}.{{q}}.maf"
+    conda:  "../envs/consensus.yaml"
+    shell:  "axtToMaf -tPrefix={TARGET}. -qPrefix={wildcards.q}. {input.axt} {input.t} {input.q} {output}"
+
+# --- 3. Progressive multiz: add query species one at a time, in config order ---------------------
+rule multiz:
+    input:  expand(f"{OUT}/maf/{TARGET}.{{q}}.maf", q=QUERIES)
+    output: f"{OUT}/multiz/{NAME}.maf"
+    log:    f"{OUT}/logs/multiz.log"
+    conda:  "../envs/consensus.yaml"
+    run:
+        import shutil
+        cur = input[0]
+        for i, nxt in enumerate(input[1:], start=1):
+            dst = output[0] if i == len(input) - 1 else f"{OUT}/multiz/step{i}.maf"
+            shell(f"multiz {cur} {nxt} v0 {OUT}/multiz/unused_{i}_a.out {OUT}/multiz/unused_{i}_b.out > {dst} 2>> {log}")
+            cur = dst
+        if len(input) == 1:
+            shutil.copy(input[0], output[0])
+
+# --- 4. Mask divergent sites --------------------------------------------------------------------
+rule mask:
+    input:  maf = rules.multiz.output, fa = f"{OUT}/genomes/{TARGET}/{TARGET}.fa", script = "mask_divergent.py"
+    output: fa = f"{OUT}/{NAME}.consensus.ucsc.fa", bed = f"{OUT}/{NAME}.masked.bed"
+    params: mm = config.get("mismatch_flank", 0), indel = config.get("indel_flank", 6)
+    log:    f"{OUT}/logs/mask.log"
+    conda:  "../envs/consensus.yaml"
+    shell:  "python {input.script} --maf {input.maf} --fasta {input.fa} --ref-prefix {TARGET}. --out {output.fa} "
+            "--bed {output.bed} --mismatch-flank {params.mm} --indel-flank {params.indel} 2> {log}"
+
+# --- 5. Ensembl-style names so the Ensembl GRCh38 GTF (release 101) matches ----------------------
+# UCSC 'chr1' -> Ensembl '1', 'chrM' -> 'MT', primary chromosomes only, so an Ensembl GTF can be used.
+rule ensembl_names:
+    input:  rules.mask.output.fa
+    output: f"{OUT}/{NAME}.consensus.ensembl.fa"
+    shell:  """
+        awk '/^>/{{n=substr($1,2); keep=(n ~ /^chr([0-9]+|X|Y|M)$/); if(keep){{sub(/^chr/,"",n); if(n=="M")n="MT"; print ">"n}}; next}} keep' {input} > {output}
+        """
+
+rule summary:
+    input:  cons = rules.mask.output.fa, orig = f"{OUT}/genomes/{TARGET}/{TARGET}.fa"
+    output: f"{OUT}/{NAME}.masking_summary.txt"
+    shell:  """
+        n_orig=$(grep -v '^>' {input.orig} | tr -cd 'Nn' | wc -c)
+        n_cons=$(grep -v '^>' {input.cons} | tr -cd 'Nn' | wc -c)
+        tot=$(grep -v '^>' {input.orig} | tr -d '\\n' | wc -c)
+        echo -e "total_bases\\t$tot\\nN_in_{TARGET}\\t$n_orig\\nN_in_consensus\\t$n_cons\\nnewly_masked\\t$((n_cons-n_orig))" > {output}
+        """

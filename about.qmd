@@ -1,0 +1,40 @@
+---
+title: "About these guides"
+---
+
+## What they are
+
+Open, step-by-step guides for analysing five common kinds of functional genomics data (bulk
+RNA-seq, ATAC-seq, ChIP-seq, Hi-C and single-cell RNA-seq), from raw reads to biological
+interpretation. Each guide pairs a reusable processing pipeline with worked R code, explains why
+each step is done the way it is, and states plainly what the results can and cannot show. An
+extension in every guide, and a shared appendix, cover comparisons across species.
+
+## How they were checked
+
+- **R code:** every R block was executed with R 4.5 and Bioconductor 3.22 on public example data
+  (airway, PBMC 3k, DiffBind's tamoxifen set) or on synthetic files in the exact formats the
+  pipelines write. The package versions are pinned in
+  [`pipelines/envs/r_analysis.yaml`](https://github.com/Delta-43/comparative-genomics-guides/blob/main/pipelines/envs/r_analysis.yaml).
+- **Pipelines:** the RNA-seq and ChIP/ATAC pipelines were run end to end on simulated data, and
+  their results matched the simulated truth. The Hi-C, scRNA-seq and consensus-genome pipelines are
+  dry-run tested. Every pipeline's conda environment has been built from its file. Full runs on real
+  data are planned.
+- **Facts and thresholds:** QC thresholds were checked against ENCODE's published standards, tool
+  options against each tool's own documentation or source code, and references against PubMed.
+
+Found a mistake? Please use the "Report an issue" link at the bottom of any page.
+
+## Example study
+
+Several guides illustrate results with an openly available study of primate astrocyte evolution:
+
+> Ciuba K, Piotrowska A, Chaudhury D, *et al.* Molecular signature of primate astrocytes reveals
+> pathways and regulatory changes contributing to human brain evolution. *Cell Stem Cell*
+> 2025;32:426–444. [doi:10.1016/j.stem.2024.12.011](https://doi.org/10.1016/j.stem.2024.12.011)
+
+## Acknowledgements
+
+The lesson structure is inspired by the openly licensed training materials of the
+[Harvard Chan Bioinformatics Core (HBC)](https://github.com/hbctraining). Guides link to HBC
+lessons wherever those go deeper.

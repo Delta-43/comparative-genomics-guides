@@ -1,0 +1,137 @@
+---
+pagetitle: "Functional Genomics Guides"
+page-layout: full
+toc: false
+---
+
+::: {.hero}
+# From raw reads to biological inference
+<p class="lead">Step-by-step, reusable guides for analysing RNA-seq, ATAC-seq, ChIP-seq, Hi-C and
+single-cell RNA-seq data. Each one has a ready-to-run Snakemake pipeline, explains every choice,
+and ends with guidance on what your results can and can't tell you.</p>
+:::
+
+::: {.callout-note}
+## Status
+All R code in the guides has been run and tested. The RNA-seq and ChIP/ATAC pipelines have been
+run end to end on simulated data; none has yet been run on a full-size real dataset. See [About](about.qmd) for what was checked and
+how to report problems.
+:::
+
+## Who these guides are for
+
+Researchers who have (or are planning) a sequencing experiment and want a **robust, standard
+starting point** they can understand, adapt and build on. You don't have to be a
+bioinformatician. If you can use a terminal and have met R before, you have enough to start.
+
+## Learning objectives
+
+By working through a guide you will be able to:
+
+- Plan an experiment that can answer your question: replicates, depth, controls and batches.
+- Turn raw FASTQ files into analysis-ready data with a reproducible pipeline that runs on a
+  workstation or an HPC cluster.
+- Judge data quality at every step, using named metrics with sensible thresholds.
+- Run the standard statistical analysis for the assay, and know when to reach for an
+  alternative.
+- Make the figures that actually test your conclusions, and read them critically.
+- Extend any analysis across species (liftOver, consensus genomes, outgroup logic).
+
+## The guides
+
+::::: {.guide-grid}
+
+::: {.guide-card}
+[Start here]{.tag}
+
+[Getting started](guides/00-getting-started.md){.stretched-link .card-title}
+
+Software, reference genomes, chromosome naming, reproducibility checklist, example data.
+:::
+
+::: {.guide-card}
+[Bulk transcriptomics]{.tag}
+
+[RNA-seq](guides/01-rna-seq.md){.stretched-link .card-title}
+
+Gene expression: trimming, STAR, featureCounts, DESeq2, functional enrichment.
+:::
+
+::: {.guide-card}
+[Chromatin]{.tag}
+
+[ATAC-seq](guides/02-atac-seq.md){.stretched-link .card-title}
+
+Accessibility: peak calling, differential accessibility, enhancers, motifs.
+:::
+
+::: {.guide-card}
+[Chromatin]{.tag}
+
+[ChIP-seq](guides/03-chip-seq.md){.stretched-link .card-title}
+
+Protein–DNA binding and histone marks: peaks, QC, differential binding.
+:::
+
+::: {.guide-card}
+[3D genome]{.tag}
+
+[Hi-C](guides/04-hic.md){.stretched-link .card-title}
+
+Contact maps, normalisation, TADs, loops and their differences.
+:::
+
+::: {.guide-card}
+[Single cell]{.tag}
+
+[scRNA-seq](guides/05-scrna-seq.md){.stretched-link .card-title}
+
+Cell Ranger, QC, clustering, annotation, pseudobulk and abundance testing.
+:::
+
+::: {.guide-card}
+[Across species]{.tag}
+
+[Comparative genomics](guides/appendix-comparative-genomics.md){.stretched-link .card-title}
+
+liftOver, orthologs, consensus genomes and outgroup logic, shared by all guides.
+:::
+
+:::::
+
+## How every guide is organised
+
+| Step | What you do | You will be able to answer |
+|---|---|---|
+| 1. Design | Replicates, depth, controls, confounders | *Can this experiment answer my question?* |
+| 2. Raw-read QC | FastQC / MultiQC | *Is the sequencing usable?* |
+| 3. Processing | Run `pipelines/<assay>` | *What did each step do to my data?* |
+| 4. Processed-data QC | Assay-specific metrics | *Did the assay work?* |
+| 5. Sample-level QC | PCA, correlation, outliers | *Do replicates agree? Is there batch?* |
+| 6. Statistics | The standard test, plus alternatives | *What changed, and how confident am I?* |
+| 7. Visualisation | The plots that test the result | *Does the result look right?* |
+| 8. Interpretation | Annotation, enrichment | *What does it mean biologically?* |
+| 9. Inference | Pros/cons, pitfalls | *What can I claim, and what can't I?* |
+| 10. Cross-species extension | liftOver, consensus genome | *How do I compare species?* |
+
+## Before you start
+
+1. **Software:** follow [Getting started](guides/00-getting-started.md) to install conda and
+   Snakemake. The pipelines create their own tool environments.
+2. **Hardware:** a 16-core / 64 GB workstation is enough for most assays. HPC users can run the
+   same pipelines through a Snakemake executor.
+3. **Data:** use your own, or the open example data below.
+
+## Example data
+
+The R code in each guide runs on public teaching datasets that Bioconductor downloads for you.
+For practising the processing pipelines, an openly available comparative study of primate
+astrocytes (Ciuba *et al.* 2025, *Cell Stem Cell*, [doi:10.1016/j.stem.2024.12.011](https://doi.org/10.1016/j.stem.2024.12.011))
+provides RNA-seq, ATAC-seq, ChIP-seq and Hi-C from human, chimpanzee and macaque cells
+(ArrayExpress E-MTAB-13252 to 13259). Its results appear in the guides as examples of what each
+analysis produces.
+
+## Acknowledgements
+
+The teaching structure is modelled on the excellent, openly licensed training materials of the
+[Harvard Chan Bioinformatics Core (HBC)](https://github.com/hbctraining).

@@ -1,0 +1,41 @@
+# R + Bioconductor for the analysis sections of every guide.
+# These exact versions were used to test the guides' R code (R 4.5, Bioconductor 3.22).
+channels: [conda-forge, bioconda]
+dependencies:
+  - r-base=4.5.3
+  - bioconductor-deseq2=1.50.2
+  - bioconductor-apeglm=1.32.0
+  - bioconductor-airway=1.30.0
+  - bioconductor-clusterprofiler=4.18.4
+  - bioconductor-org.hs.eg.db=3.22.0
+  - bioconductor-chipseeker=1.46.1
+  - bioconductor-txdb.hsapiens.ucsc.hg38.knowngene=3.22.0
+  - bioconductor-diffbind=3.20.0
+  - bioconductor-csaw=1.44.0
+  - bioconductor-rsubread=2.24.0
+  - bioconductor-genomicranges=1.62.1
+  - bioconductor-rtracklayer=1.70.1
+  - bioconductor-biomart=2.66.2
+  - bioconductor-singlecellexperiment=1.32.0
+  - bioconductor-scuttle=1.20.0
+  - bioconductor-scater=1.38.1
+  - bioconductor-scran=1.38.1
+  - bioconductor-bluster=1.20.0
+  - bioconductor-scdblfinder=1.24.10
+  - bioconductor-singler=2.12.0
+  - bioconductor-celldex=1.20.0
+  - bioconductor-tenxpbmcdata=1.28.0
+  - bioconductor-dropletutils=1.30.0
+  - bioconductor-batchelor=1.26.0
+  - bioconductor-speckle=1.10.0
+  - bioconductor-muscat=1.24.0
+  - bioconductor-plotgardener=1.16.0
+  - r-harmony=2.0.5
+  - r-ggplot2=4.0.3
+  - r-pheatmap=1.0.13
+  - r-data.table=1.18.6.1
+  - r-matrix=1.7_5
+  - r-ashr=2.2_63
+  - ucsc-liftover
+  - meme
+  - blast

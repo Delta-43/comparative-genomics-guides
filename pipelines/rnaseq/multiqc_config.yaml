@@ -1,0 +1,10 @@
+extra_fn_clean_exts:
+  - "_val_1"
+  - "_val_2"
+  - "_R1"
+  - "_R2"
+  - ".Aligned.sortedByCoord.out"
+  - ".Log.final.out"
+report_header_info:
+  - Application Type: "bulk RNA-seq (paired-end)"
+  - Pipeline: "pipelines/rnaseq (Trim Galore > [BBSplit] > STAR > featureCounts)"

@@ -1,0 +1,2 @@
+sample	libraries	feature_ref
+pbmc_hashed	templates/library.csv	templates/feature_ref.csv

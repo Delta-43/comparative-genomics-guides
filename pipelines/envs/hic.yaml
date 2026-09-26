@@ -1,0 +1,16 @@
+# Dependencies for the Juicer CPU pipeline + TopDom.
+# Juicer's shell scripts are NOT on conda: the Snakefile clones them from GitHub at a pinned tag.
+# TopDom 0.10.1 is installed from the CRAN archive by the Snakefile's install_topdom rule.
+channels: [conda-forge, bioconda]
+dependencies:
+  - bwa=0.7.17
+  - samtools=1.17
+  - juicertools=2.20.00
+  - openjdk=17
+  - gawk
+  - coreutils
+  - git
+  - python=3.10
+  - r-base=4.3
+  - r-remotes
+  - r-data.table

@@ -1,0 +1,7 @@
+# Consensus (masked) genome build: see guides/appendix-comparative-genomics.md
+target: "hg38"                         # UCSC assembly whose coordinates are kept
+queries: ["panTro6", "rheMac10"]       # UCSC assemblies to mask against, added to multiz in this order
+name: "hg38_panTro6_rheMac10"          # output prefix
+mismatch_flank: 0                      # extra bases masked on each side of a mismatch
+indel_flank: 6                         # extra bases masked on each side of an indel
+outdir: "results"

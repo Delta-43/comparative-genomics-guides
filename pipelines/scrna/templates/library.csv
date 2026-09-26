@@ -1,0 +1,3 @@
+fastqs,sample,library_type
+/absolute/path/to/fastqs/,pbmc_GEX,Gene Expression
+/absolute/path/to/fastqs/,pbmc_HTO,Antibody Capture

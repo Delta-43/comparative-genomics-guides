@@ -1,0 +1,12 @@
+# Aligner, filtering, peak calling and coverage tools for ChIP-seq / ATAC-seq.
+channels: [conda-forge, bioconda]
+dependencies:
+  - bowtie2=2.5.1
+  - samtools=1.17
+  - picard=3.0.0
+  - deeptools=3.5.1
+  - matplotlib-base<3.9   # deepTools 3.5.1 uses matplotlib.cm.register_cmap, removed in 3.9
+  - macs2=2.2.7.1
+  - bedtools=2.31.0
+  - bbmap=39.01
+  - pigz

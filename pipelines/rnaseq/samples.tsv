@@ -1,0 +1,7 @@
+# Tab-separated, one row per sequencing library. Sample names must not contain dots.
+# Relative FASTQ paths are resolved against the folder containing this file.
+sample	fastq_1	fastq_2
+ctrl_rep1	fastq/ctrl_rep1_R1.fastq.gz	fastq/ctrl_rep1_R2.fastq.gz
+ctrl_rep2	fastq/ctrl_rep2_R1.fastq.gz	fastq/ctrl_rep2_R2.fastq.gz
+treat_rep1	fastq/treat_rep1_R1.fastq.gz	fastq/treat_rep1_R2.fastq.gz
+treat_rep2	fastq/treat_rep2_R1.fastq.gz	fastq/treat_rep2_R2.fastq.gz

@@ -1,0 +1,5 @@
+# Tab-separated, one row per library. Re-sequenced libraries of one sample can be merged afterwards
+# with Juicer mega.sh.
+sample	fastq_1	fastq_2	genome
+ctrl_rep1	fastq/ctrl_rep1_R1.fastq.gz	fastq/ctrl_rep1_R2.fastq.gz	hg38
+ctrl_rep2	fastq/ctrl_rep2_R1.fastq.gz	fastq/ctrl_rep2_R2.fastq.gz	hg38

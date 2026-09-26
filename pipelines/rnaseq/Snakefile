@@ -1,0 +1,186 @@
+# Paired-end bulk RNA-seq: FASTQ -> trimmed reads -> (optional per-species read split) -> STAR
+# -> gene count matrix + BPM bigWigs + MultiQC report.
+#
+# Works on one species, or on mixed-species samples (e.g. co-cultures, xenografts): list two
+# genomes in config.yaml and reads are first assigned to a species with BBSplit.
+# Walk-through: guides/01-rna-seq.md.
+#
+# Run:  snakemake --use-conda --cores 16            (from this directory)
+#       snakemake --use-conda --cores 16 -n         (dry run: always do this first)
+
+configfile: "config.yaml"
+include: "../common.smk"
+import math, os
+
+SAMPLES = read_samples(config["samples"])
+GENOMES = config["genomes"]                      # {name: {fasta, gtf, star_index(optional)}}
+GENOME_NAMES = list(GENOMES)
+MIXED = len(GENOME_NAMES) > 1                    # >1 genome => mixed-species sample, split with BBSplit
+PRIMARY = GENOME_NAMES[0]                        # strandedness is inferred on this genome
+OUT = config.get("outdir", "results")
+
+wildcard_constraints:
+    sample = "[^./]+",
+    genome = "|".join(GENOME_NAMES),
+    read = "1|2"
+
+rule all:
+    input:
+        expand(f"{OUT}/featureCounts/{{genome}}_gene_counts.txt", genome=GENOME_NAMES),
+        expand(f"{OUT}/bigwig/{{sample}}.{{genome}}.BPM.bw", sample=SAMPLES, genome=GENOME_NAMES),
+        f"{OUT}/qc/strandedness.txt",
+        f"{OUT}/multiqc/multiqc_report.html"
+
+# --- 0. Stage raw reads under predictable names --------------------------------------------------
+rule link_raw:
+    input:  fq1 = lambda w: SAMPLES[w.sample]["fastq_1"], fq2 = lambda w: SAMPLES[w.sample]["fastq_2"]
+    output: fq1 = f"{OUT}/raw/{{sample}}_R1.fastq.gz", fq2 = f"{OUT}/raw/{{sample}}_R2.fastq.gz"
+    shell:  "ln -sf $(realpath {input.fq1}) {output.fq1} && ln -sf $(realpath {input.fq2}) {output.fq2}"
+
+# --- 1. QC + trimming -------------------------------------------------------------------------------
+rule fastqc_raw:
+    input:  f"{OUT}/raw/{{sample}}_R{{read}}.fastq.gz"
+    output: f"{OUT}/qc/fastqc_raw/{{sample}}_R{{read}}_fastqc.zip"
+    log:    f"{OUT}/logs/fastqc_raw/{{sample}}_R{{read}}.log"
+    conda:  "../envs/qc.yaml"
+    threads: 2
+    shell:  "fastqc -t {threads} -o {OUT}/qc/fastqc_raw {input} 2> {log}"
+
+rule trim_galore:
+    input:  fq1 = f"{OUT}/raw/{{sample}}_R1.fastq.gz", fq2 = f"{OUT}/raw/{{sample}}_R2.fastq.gz"
+    output: fq1 = f"{OUT}/trimmed/{{sample}}_val_1.fq.gz", fq2 = f"{OUT}/trimmed/{{sample}}_val_2.fq.gz"
+    params: extra = config.get("trim_galore_args", "")
+    log:    f"{OUT}/logs/trim_galore/{{sample}}.log"
+    conda:  "../envs/qc.yaml"
+    threads: threads("trim_galore", 4)
+    shell:  "trim_galore --paired {params.extra} --cores {threads} --basename {wildcards.sample} "
+            "-o {OUT}/trimmed {input.fq1} {input.fq2} 2> {log}"
+
+rule fastqc_trimmed:
+    input:  f"{OUT}/trimmed/{{sample}}_val_{{read}}.fq.gz"
+    output: f"{OUT}/qc/fastqc_trimmed/{{sample}}_val_{{read}}_fastqc.zip"
+    log:    f"{OUT}/logs/fastqc_trimmed/{{sample}}_{{read}}.log"
+    conda:  "../envs/qc.yaml"
+    threads: 2
+    shell:  "fastqc -t {threads} -o {OUT}/qc/fastqc_trimmed {input} 2> {log}"
+
+# --- 2. Optional: split mixed-species reads (co-culture, xenograft, pooled samples) ----------------
+rule bbsplit_index:
+    input:  [GENOMES[g]["fasta"] for g in GENOME_NAMES]
+    output: touch(f"{OUT}/ref/bbsplit/index.done")
+    params: refs = " ".join(f"ref_{g}={GENOMES[g]['fasta']}" for g in GENOME_NAMES),
+            xmx = config.get("bbsplit_xmx", "96g")
+    log:    f"{OUT}/logs/bbsplit_index.log"
+    conda:  "../envs/rnaseq.yaml"
+    threads: threads("bbsplit", 16)
+    shell:  "bbsplit.sh -Xmx{params.xmx} threads={threads} build=1 {params.refs} path={OUT}/ref/bbsplit 2> {log}"
+
+rule bbsplit:
+    input:  fq1 = rules.trim_galore.output.fq1, fq2 = rules.trim_galore.output.fq2, idx = rules.bbsplit_index.output
+    output: expand(f"{OUT}/split/{{{{sample}}}}_{{genome}}_{{read}}.fq.gz", genome=GENOME_NAMES, read=[1, 2]),
+            stats = f"{OUT}/split/{{sample}}_refstats.txt"
+    params: amb = config.get("bbsplit_ambiguous", "toss"), xmx = config.get("bbsplit_xmx", "96g")
+    log:    f"{OUT}/logs/bbsplit/{{sample}}.log"
+    conda:  "../envs/rnaseq.yaml"
+    threads: threads("bbsplit", 16)
+    shell:  "bbsplit.sh -Xmx{params.xmx} threads={threads} build=1 path={OUT}/ref/bbsplit "
+            "ambiguous2={params.amb} in={input.fq1} in2={input.fq2} refstats={output.stats} "
+            "basename={OUT}/split/{wildcards.sample}_%_#.fq.gz 2> {log}"
+
+def reads_for(w):
+    if MIXED:
+        return [f"{OUT}/split/{w.sample}_{w.genome}_1.fq.gz", f"{OUT}/split/{w.sample}_{w.genome}_2.fq.gz"]
+    return [f"{OUT}/trimmed/{w.sample}_val_1.fq.gz", f"{OUT}/trimmed/{w.sample}_val_2.fq.gz"]
+
+# --- 3. Alignment ----------------------------------------------------------------------------------
+def star_index(g):
+    return GENOMES[g].get("star_index") or f"{OUT}/ref/{g}/star"
+
+rule star_index:
+    input:  fasta = lambda w: GENOMES[w.genome]["fasta"], gtf = lambda w: GENOMES[w.genome]["gtf"]
+    output: directory(f"{OUT}/ref/{{genome}}/star")
+    params: overhang = config.get("sjdb_overhang", 100),
+            # STAR manual: --genomeSAindexNbases min(14, log2(genome length)/2 - 1); small genomes crash otherwise.
+            # The FASTA's file size is a close enough proxy for genome length.
+            sa = lambda w, input: min(14, int(math.log2(max(os.path.getsize(input.fasta), 2)) / 2 - 1))
+    log:    f"{OUT}/logs/star_index/{{genome}}.log"
+    conda:  "../envs/rnaseq.yaml"
+    threads: threads("star", 8)
+    resources: mem_mb = mem_mb("star_index", 40000)
+    shell:  "mkdir -p {output} && STAR --runMode genomeGenerate --runThreadN {threads} --genomeDir {output} "
+            "--genomeFastaFiles {input.fasta} --sjdbGTFfile {input.gtf} --sjdbOverhang {params.overhang} "
+            "--genomeSAindexNbases {params.sa} > {log} 2>&1"
+
+rule star:
+    input:  reads = reads_for, index = lambda w: star_index(w.genome)
+    output: bam = f"{OUT}/star/{{sample}}.{{genome}}.Aligned.sortedByCoord.out.bam",
+            genecounts = f"{OUT}/star/{{sample}}.{{genome}}.ReadsPerGene.out.tab",
+            log_final = f"{OUT}/star/{{sample}}.{{genome}}.Log.final.out"
+    params: prefix = f"{OUT}/star/{{sample}}.{{genome}}.",
+            extra = config.get("star_args", "")
+    log:    f"{OUT}/logs/star/{{sample}}.{{genome}}.log"
+    conda:  "../envs/rnaseq.yaml"
+    threads: threads("star", 8)
+    resources: mem_mb = mem_mb("star", 36000)
+    shell:  "STAR --genomeDir {input.index} --runThreadN {threads} --readFilesIn {input.reads} "
+            "--readFilesCommand zcat --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate "
+            "--quantMode GeneCounts {params.extra} > {log} 2>&1 && samtools index -@ {threads} {output.bam}"
+
+# --- 4. Strandedness: inferred from STAR's per-strand gene counts, never assumed ------------------
+rule infer_strandedness:
+    input:  expand(f"{OUT}/star/{{sample}}.{PRIMARY}.ReadsPerGene.out.tab", sample=SAMPLES)
+    output: f"{OUT}/qc/strandedness.txt"
+    run:
+        # ReadsPerGene columns: gene, unstranded, read1-sense (= featureCounts -s 1), read2-sense (= -s 2)
+        fwd = rev = 0
+        for f in input:
+            with open(f) as fh:
+                for line in fh:
+                    if line.startswith("N_"):
+                        continue
+                    _, _, a, b = line.split("\t")
+                    fwd += int(a); rev += int(b)
+        ratio = fwd / max(rev, 1)
+        call = 1 if ratio > 4 else 2 if ratio < 0.25 else 0
+        with open(output[0], "w") as out:
+            out.write(f"{call}\n# -s1 counts={fwd} -s2 counts={rev} ratio(-s1/-s2)={ratio:.3f}\n")
+        if str(config.get("strandedness", "auto")) not in ("auto", str(call)):
+            print(f"WARNING: config strandedness={config['strandedness']} but data suggests -s {call} "
+                  f"(see {output[0]})")
+
+# "auto" -> read the inferred value at run time; otherwise use the configured value verbatim.
+STRAND = str(config.get("strandedness", "auto"))
+STRAND_SHELL = f"$(head -n1 {OUT}/qc/strandedness.txt)" if STRAND == "auto" else STRAND
+
+# --- 5. Quantification -----------------------------------------------------------------------------
+rule featurecounts:
+    input:  bams = expand(f"{OUT}/star/{{sample}}.{{{{genome}}}}.Aligned.sortedByCoord.out.bam", sample=SAMPLES),
+            gtf = lambda w: GENOMES[w.genome]["gtf"], strand = f"{OUT}/qc/strandedness.txt"
+    output: f"{OUT}/featureCounts/{{genome}}_gene_counts.txt"
+    params: strand = STRAND_SHELL,
+            extra = config.get("featurecounts_args", "-p --countReadPairs -t exon -g gene_id")
+    log:    f"{OUT}/logs/featureCounts/{{genome}}.log"
+    conda:  "../envs/rnaseq.yaml"
+    threads: threads("featurecounts", 8)
+    shell:  "featureCounts -T {threads} -s {params.strand} {params.extra} -a {input.gtf} -o {output} {input.bams} 2> {log}"
+
+# --- 6. Coverage tracks for genome browsers --------------------------------------------------------
+rule bamcoverage:
+    input:  f"{OUT}/star/{{sample}}.{{genome}}.Aligned.sortedByCoord.out.bam"
+    output: f"{OUT}/bigwig/{{sample}}.{{genome}}.BPM.bw"
+    params: bs = config.get("bigwig_binsize", 10)
+    log:    f"{OUT}/logs/bamCoverage/{{sample}}.{{genome}}.log"
+    conda:  "../envs/rnaseq.yaml"
+    threads: threads("bamcoverage", 4)
+    shell:  "bamCoverage -p {threads} -bs {params.bs} --normalizeUsing BPM -b {input} -o {output} 2> {log}"
+
+# --- 7. One report for everything ------------------------------------------------------------------
+rule multiqc:
+    input:  expand(f"{OUT}/qc/fastqc_raw/{{sample}}_R{{read}}_fastqc.zip", sample=SAMPLES, read=[1, 2]),
+            expand(f"{OUT}/qc/fastqc_trimmed/{{sample}}_val_{{read}}_fastqc.zip", sample=SAMPLES, read=[1, 2]),
+            expand(f"{OUT}/featureCounts/{{genome}}_gene_counts.txt", genome=GENOME_NAMES),
+            expand(f"{OUT}/star/{{sample}}.{{genome}}.Log.final.out", sample=SAMPLES, genome=GENOME_NAMES)
+    output: f"{OUT}/multiqc/multiqc_report.html"
+    log:    f"{OUT}/logs/multiqc.log"
+    conda:  "../envs/qc.yaml"
+    shell:  "multiqc -f -c multiqc_config.yaml -o {OUT}/multiqc {OUT} 2> {log}"

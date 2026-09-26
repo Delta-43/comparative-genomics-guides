@@ -1,0 +1,18 @@
+# R
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# OS / editor
+.DS_Store
+*.tmp
+
+# Website build output and cache
+_site/
+.quarto/
+
+# Pipeline outputs and Snakemake state
+pipelines/**/results/
+.snakemake/

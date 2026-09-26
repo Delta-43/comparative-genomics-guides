@@ -1,0 +1,9 @@
+extra_fn_clean_exts:
+  - "_val_1"
+  - "_val_2"
+  - "_R1"
+  - "_R2"
+  - "_peaks"
+report_header_info:
+  - Application Type: "ChIP-seq / ATAC-seq (paired-end)"
+  - Pipeline: "pipelines/chip_atac (trimGalore > [BBSplit] > bowtie2 > markdup/filter > MACS2)"

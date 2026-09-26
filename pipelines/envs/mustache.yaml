@@ -1,0 +1,9 @@
+# Mustache loop caller. hic-straw comes prebuilt from bioconda: installed via pip it compiles
+# from source and needs libcurl headers.
+channels: [conda-forge, bioconda]
+dependencies:
+  - python=3.10
+  - hic-straw=1.3.1
+  - pip
+  - pip:
+      - mustache-hic==1.3.3

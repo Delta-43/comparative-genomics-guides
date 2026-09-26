@@ -1,0 +1,41 @@
+/*-- scss:defaults --*/
+$primary: #1f6f8b;
+$font-family-sans-serif: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+$font-size-root: 17px;
+$navbar-bg: #1f4e5f;
+$navbar-fg: #ffffff;
+
+/*-- scss:rules --*/
+// Hero on the home page (hbc course sites open with a coloured title banner)
+.hero {
+  padding: 2.2rem 1.6rem;
+  margin: 0 0 2rem 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #1f4e5f 0%, #1f6f8b 60%, #2a9d8f 100%);
+  color: #fff;
+  h1, p { color: #fff; margin: 0; }
+  h1 { font-size: 2.1rem; font-weight: 700; border: none; }
+  p.lead { margin-top: .6rem; font-size: 1.15rem; opacity: .95; max-width: 46rem; }
+}
+// Assay cards
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 2rem;
+}
+.guide-card {
+  position: relative;          // lets .stretched-link cover the whole card
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(127,127,127,.3);
+  border-radius: 8px;
+  text-decoration: none !important;
+  color: inherit !important;
+  transition: border-color .15s, transform .15s;
+  &:hover { border-color: $primary; transform: translateY(-2px); }
+  p { margin: 0; }
+  .card-title { display: block; margin: .25rem 0 .4rem; font-size: 1.2rem; font-weight: 600; text-decoration: none; }
+  .tag { display: block; font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; color: $primary; font-weight: 600; }
+  font-size: .95rem;
+}
+table { font-size: .93rem; }

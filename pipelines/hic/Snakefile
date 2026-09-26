@@ -1,0 +1,161 @@
+# In situ Hi-C: FASTQ -> trimmed reads -> Juicer (CPU) -> inter_30.hic -> per-chromosome 5 kb dumps
+# (the input of guides/04-hic.md Part B) + 25 kb TopDom domains + loop calls.
+#
+# Built on the Juicer pipeline (Durand et al. 2016, Cell Systems) run in CPU mode, TopDom for
+# domains (Shin et al. 2016, NAR) and HiCCUPS or Mustache for loops. Dumps raw (NONE-normalised)
+# contact matrices at 5 kb so any normalisation can be applied downstream in R or Python.
+# Walk-through: guides/04-hic.md. Dry-run tested; not yet executed end to end.
+#
+# Run: snakemake --use-conda --cores 16 -n, then without -n. Expect ~1 day and ~150 GB scratch per
+# billion read pairs on 16 cores.
+
+configfile: "config.yaml"
+include: "../common.smk"
+
+SAMPLES = read_samples(config["samples"])        # sample, fastq_1, fastq_2, genome
+GENOMES = config["genomes"]                      # {name: {fasta, chroms: [...]}}
+OUT = config.get("outdir", "results")
+ENZ = config.get("enzyme", "MboI")
+JUICER_COMMIT = config.get("juicer_commit", "177eb610397e4207fc56db1df169b2d08d06d43a")
+JT_URL = config.get("juicer_tools_url", "https://github.com/aidenlab/Juicebox/releases/download/v2.20.00/juicer_tools.2.20.00.jar")
+JDIR = f"{OUT}/juicer_install"
+
+def gen(s): return SAMPLES[s]["genome"]
+def chroms(g): return GENOMES[g]["chroms"]
+
+wildcard_constraints:
+    sample = "[^./]+", genome = "|".join(GENOMES), chrom = "[^./]+"
+
+def targets():
+    t = [f"{OUT}/hic/{s}.inter_30.hic" for s in SAMPLES]
+    for s in SAMPLES:
+        g = gen(s)
+        t += [f"{OUT}/dump_5kb/{s}/{s}_inter_30_{c}_NO_5KB_dump.txt" for c in chroms(g)]
+        t += [f"{OUT}/topdom_25kb/{s}.topdom.bedpe"]
+        if config.get("loop_caller", "hiccups") != "none":
+            t += [f"{OUT}/loops/{s}.{config.get('loop_caller', 'hiccups')}.bedpe"]
+    return t
+
+rule all:
+    input: targets()
+
+# --- 0. Tools & references -----------------------------------------------------------------------
+rule install_juicer:
+    output: tools = f"{JDIR}/scripts/common/juicer_tools", jar = f"{JDIR}/scripts/common/juicer_tools.jar",
+            sites_py = f"{JDIR}/misc/generate_site_positions.py", sh = f"{JDIR}/scripts/juicer.sh"
+    conda:  "../envs/hic.yaml"
+    shell:  """
+        rm -rf {JDIR}/src && git clone -q https://github.com/aidenlab/juicer.git {JDIR}/src
+        git -C {JDIR}/src checkout -q {JUICER_COMMIT}
+        mkdir -p {JDIR}/scripts {JDIR}/misc
+        cp -r {JDIR}/src/CPU/* {JDIR}/scripts/ && cp {JDIR}/src/misc/generate_site_positions.py {JDIR}/misc/
+        curl -sL -o {output.jar} {JT_URL}
+        chmod +x {JDIR}/scripts/*.sh {output.tools}
+        """
+
+rule install_topdom:
+    output: touch(f"{OUT}/logs/topdom_installed.done")
+    conda:  "../envs/hic.yaml"
+    shell:  "Rscript -e 'if (!requireNamespace(\"TopDom\", quietly=TRUE) || packageVersion(\"TopDom\") != \"0.10.1\") "
+            "remotes::install_version(\"TopDom\", version=\"0.10.1\", repos=\"https://cloud.r-project.org\")'"
+
+rule prep_reference:            # Juicer wants a BWA index next to the FASTA
+    input:  lambda w: GENOMES[w.genome]["fasta"]
+    output: fa = f"{OUT}/ref/{{genome}}/{{genome}}.fa", bwt = f"{OUT}/ref/{{genome}}/{{genome}}.fa.bwt",
+            sizes = f"{OUT}/ref/{{genome}}/{{genome}}.chrom.sizes"
+    conda:  "../envs/hic.yaml"
+    threads: 2
+    shell:  "zcat -f {input} > {output.fa} && samtools faidx {output.fa} && cut -f1,2 {output.fa}.fai > {output.sizes} "
+            "&& bwa index {output.fa}"
+
+rule restriction_sites:         # Juicer's generate_site_positions.py (any enzyme it knows)
+    input:  fa = rules.prep_reference.output.fa, py = rules.install_juicer.output.sites_py
+    output: f"{OUT}/ref/{{genome}}/{{genome}}_{ENZ}.txt"
+    conda:  "../envs/hic.yaml"
+    shell:  "py=$(realpath {input.py}); cd {OUT}/ref/{wildcards.genome} && python $py {ENZ} {wildcards.genome} {wildcards.genome}.fa"
+
+# --- 1. Adapter trimming (optional; Juicer's BWA-MEM also soft-clips adapters) ----------------------
+rule trim_galore:
+    input:  fq1 = lambda w: SAMPLES[w.sample]["fastq_1"], fq2 = lambda w: SAMPLES[w.sample]["fastq_2"]
+    output: fq1 = f"{OUT}/juicer/{{sample}}/fastq/{{sample}}_R1.fastq.gz",
+            fq2 = f"{OUT}/juicer/{{sample}}/fastq/{{sample}}_R2.fastq.gz"
+    params: extra = config.get("trim_galore_args", "--paired"), d = f"{OUT}/trim_tmp/{{sample}}"
+    log:    f"{OUT}/logs/trim_galore/{{sample}}.log"
+    conda:  "../envs/qc.yaml"
+    threads: threads("trim_galore", 4)
+    shell:  """
+        trim_galore {params.extra} --cores {threads} --basename {wildcards.sample} -o {params.d} {input.fq1} {input.fq2} 2> {log}
+        mv {params.d}/{wildcards.sample}_val_1.fq.gz {output.fq1}; mv {params.d}/{wildcards.sample}_val_2.fq.gz {output.fq2}
+        """
+
+# --- 2. Juicer ---------------------------------------------------------------------------------------
+# juicer.sh refuses to run if aligned/ exists, so a re-run starts clean. Its post-processing
+# (HiCCUPS/arrowhead, GPU) may fail on a CPU-only machine; that does not affect inter_30.hic,
+# and loops are called separately below.
+rule juicer:
+    input:  fq = rules.trim_galore.output, tools = rules.install_juicer.output.tools,
+            fa = lambda w: f"{OUT}/ref/{gen(w.sample)}/{gen(w.sample)}.fa",
+            bwt = lambda w: f"{OUT}/ref/{gen(w.sample)}/{gen(w.sample)}.fa.bwt",
+            sizes = lambda w: f"{OUT}/ref/{gen(w.sample)}/{gen(w.sample)}.chrom.sizes",
+            sites = lambda w: f"{OUT}/ref/{gen(w.sample)}/{gen(w.sample)}_{ENZ}.txt"
+    output: hic = f"{OUT}/hic/{{sample}}.inter_30.hic", stats = f"{OUT}/hic/{{sample}}.inter_30.txt"
+    params: top = f"{OUT}/juicer/{{sample}}", g = lambda w: gen(w.sample)
+    log:    f"{OUT}/logs/juicer/{{sample}}.log"
+    conda:  "../envs/hic.yaml"
+    threads: threads("juicer", 16)
+    shell:  """
+        top=$(realpath {params.top}); rm -rf $top/aligned $top/splits $top/done_splits
+        bash $(realpath {JDIR})/scripts/juicer.sh -D $(realpath {JDIR}) -d $top -g {params.g} -s {ENZ} \
+            -z $(realpath {input.fa}) -y $(realpath {input.sites}) -p $(realpath {input.sizes}) -t {threads} > {log} 2>&1 || true
+        test -s $top/aligned/inter_30.hic || {{ echo "Juicer did not produce inter_30.hic - see {log}" >&2; exit 1; }}
+        cp $top/aligned/inter_30.hic {output.hic}; cp $top/aligned/inter_30.txt {output.stats}
+        """
+
+# --- 3. Matrices for Part B ----------------------------------------------------------------------
+# NONE = raw observed counts, so you can choose the normalisation later (guides/04-hic.md).
+rule dump_5kb:
+    input:  hic = rules.juicer.output.hic, jar = rules.install_juicer.output.jar
+    output: f"{OUT}/dump_5kb/{{sample}}/{{sample}}_inter_30_{{chrom}}_NO_5KB_dump.txt"
+    conda:  "../envs/hic.yaml"
+    resources: mem_mb = mem_mb("dump", 8000)
+    shell:  "java -Xmx6g -jar {input.jar} dump observed NONE {input.hic} {wildcards.chrom} {wildcards.chrom} BP 5000 {output}"
+
+rule dump_25kb:
+    input:  hic = rules.juicer.output.hic, jar = rules.install_juicer.output.jar
+    output: temp(f"{OUT}/dump_25kb/{{sample}}/{{sample}}_{{chrom}}_25KB_dump.txt")
+    conda:  "../envs/hic.yaml"
+    shell:  "java -Xmx6g -jar {input.jar} dump observed NONE {input.hic} {wildcards.chrom} {wildcards.chrom} BP 25000 {output}"
+
+rule topdom_chrom:              # TopDom at 25 kb; window.size 4 = 100 kb window on each side
+    input:  dump = rules.dump_25kb.output, ok = rules.install_topdom.output,
+            sizes = lambda w: f"{OUT}/ref/{gen(w.sample)}/{gen(w.sample)}.chrom.sizes"
+    output: f"{OUT}/topdom_25kb/{{sample}}/{{chrom}}.topdom.bedpe"
+    params: prefix = f"{OUT}/topdom_25kb/{{sample}}/{{chrom}}", ws = config.get("topdom_window", 4)
+    conda:  "../envs/hic.yaml"
+    shell:  "Rscript scripts/topdom_from_dump.R {input.dump} {wildcards.chrom} "
+            "$(awk -v c={wildcards.chrom} '$1==c{{print $2}}' {input.sizes}) 25000 {params.ws} {params.prefix}"
+
+rule topdom_merge:
+    input:  lambda w: expand(f"{OUT}/topdom_25kb/{w.sample}/{{chrom}}.topdom.bedpe", chrom=chroms(gen(w.sample)))
+    output: f"{OUT}/topdom_25kb/{{sample}}.topdom.bedpe"
+    shell:  "cat {input} > {output}"
+
+# --- 4. Loops --------------------------------------------------------------------------------------
+rule hiccups:                   # CPU HiCCUPS (juicer_tools 2.x); slower than GPU but no CUDA needed
+    input:  hic = rules.juicer.output.hic, jar = rules.install_juicer.output.jar
+    output: f"{OUT}/loops/{{sample}}.hiccups.bedpe"
+    params: d = f"{OUT}/loops/{{sample}}_hiccups", res = config.get("hiccups_resolutions", "5000,10000,25000")
+    log:    f"{OUT}/logs/hiccups/{{sample}}.log"
+    conda:  "../envs/hic.yaml"
+    threads: threads("juicer", 16)
+    shell:  "java -Xmx24g -jar {input.jar} hiccups --cpu --threads {threads} -r {params.res} {input.hic} {params.d} > {log} 2>&1 "
+            "&& cp {params.d}/merged_loops.bedpe {output}"
+
+rule mustache:                  # alternative loop caller (Roayaei Ardakany et al. 2020, Genome Biol)
+    input:  rules.juicer.output.hic
+    output: f"{OUT}/loops/{{sample}}.mustache.bedpe"
+    params: res = config.get("mustache_resolution", 5000), ch = lambda w: " ".join(chroms(gen(w.sample)))
+    log:    f"{OUT}/logs/mustache/{{sample}}.log"
+    conda:  "../envs/mustache.yaml"
+    threads: threads("juicer", 16)
+    shell:  "mustache -f {input} -ch {params.ch} -r {params.res} -p {threads} -norm KR -o {output} > {log} 2>&1"
