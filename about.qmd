@@ -33,6 +33,14 @@ Several guides illustrate results with an openly available study of primate astr
 > pathways and regulatory changes contributing to human brain evolution. *Cell Stem Cell*
 > 2025;32:426–444. [doi:10.1016/j.stem.2024.12.011](https://doi.org/10.1016/j.stem.2024.12.011)
 
+## Licence
+
+These are open access materials. The guides and website content are distributed under the
+[Creative Commons Attribution licence](https://creativecommons.org/licenses/by/4.0/) (CC BY 4.0),
+which permits unrestricted use, distribution and reproduction in any medium, provided the
+original author and source are credited. The pipeline code is released under the
+[MIT licence](https://github.com/Delta-43/comparative-genomics-guides/blob/main/LICENSE).
+
 ## Acknowledgements
 
 The lesson structure is inspired by the openly licensed training materials of the

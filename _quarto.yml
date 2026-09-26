@@ -89,7 +89,7 @@ website:
         - href: pipelines/README.md
           text: "Processing pipelines"
   page-footer:
-    left: "© Debadeep Chaudhury"   # add the licence here once chosen
+    left: "© Debadeep Chaudhury · Content [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) · Code [MIT](https://github.com/Delta-43/comparative-genomics-guides/blob/main/LICENSE)"
     right: "Built with [Quarto](https://quarto.org) · Inspired by [HBC Training](https://github.com/hbctraining)"
 
 format:
