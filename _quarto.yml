@@ -34,23 +34,8 @@ website:
     left:
       - text: "Home"
         href: index.qmd
-      - text: "Getting started"
-        href: guides/00-getting-started.md
       - text: "Guides"
-        menu:
-          - text: "RNA-seq"
-            href: guides/01-rna-seq.md
-          - text: "ATAC-seq"
-            href: guides/02-atac-seq.md
-          - text: "ChIP-seq"
-            href: guides/03-chip-seq.md
-          - text: "Hi-C"
-            href: guides/04-hic.md
-          - text: "scRNA-seq"
-            href: guides/05-scrna-seq.md
-          - text: "---"
-          - text: "Comparative genomics (appendix)"
-            href: guides/appendix-comparative-genomics.md
+        href: guides/00-getting-started.md
       - text: "Pipelines"
         href: pipelines/README.md
       - text: "About"
@@ -85,9 +70,6 @@ website:
           contents:
             - href: guides/appendix-comparative-genomics.md
               text: "Comparative genomics"
-        - text: "---"
-        - href: pipelines/README.md
-          text: "Processing pipelines"
   page-footer:
     left: "© Debadeep Chaudhury · Content [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) · Code [MIT](https://github.com/Delta-43/comparative-genomics-guides/blob/main/LICENSE)"
     right: "Built with [Quarto](https://quarto.org) · Inspired by [HBC Training](https://github.com/hbctraining)"

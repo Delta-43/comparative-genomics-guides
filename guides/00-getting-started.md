@@ -5,6 +5,14 @@ subtitle: "Software, reference genomes, conventions and example data for every g
 
 Read this once before any guide. It covers the set-up every guide shares.
 
+::: {.callout-tip}
+## How to read these guides
+Each guide follows one workflow from raw reads to interpretation: design, QC, processing,
+statistics, plots and inference. Where there is a common alternative, a collapsed box names it
+and its trade-offs. Treat each guide as a documented starting point, not the only correct way.
+Read the linked tool documentation, and adapt thresholds and parameters to your own data.
+:::
+
 | Guide | Question | Processing | Analysis in R |
 |---|---|---|---|
 | [RNA-seq](01-rna-seq.md) | Which genes change expression? | `pipelines/rnaseq` | DESeq2, enrichment |
@@ -83,7 +91,8 @@ Other useful resources: [ENCODE blacklists](https://github.com/Boyle-Lab/Blackli
   PBMC 3k, DiffBind's tamoxifen data), so every block runs as written. Where a block reads your
   own pipeline output instead, the file paths match what the pipelines write (`results/...`).
 - Collapsed "Alternatives" boxes describe other standard tools and their trade-offs.
-- Each guide ends with **exercises**; answers are in a collapsed box.
+- Each guide ends with a **reproducibility checklist** and **exercises**; answers are in a
+  collapsed box.
 
 ## Reproducibility checklist (every guide)
 
@@ -104,8 +113,9 @@ The processing pipelines can be tried on a published, openly available study of 
 astrocyte evolution: **Ciuba *et al.* 2025**, "Molecular signature of primate astrocytes reveals
 pathways and regulatory changes contributing to human brain evolution", *Cell Stem Cell*
 32:426–444 ([doi:10.1016/j.stem.2024.12.011](https://doi.org/10.1016/j.stem.2024.12.011)). It has
-bulk RNA-seq, ATAC-seq, H3K27ac and H3K4me3 ChIP-seq, and in situ Hi-C from human, chimpanzee and
-rhesus macaque iPSC-derived astrocytes:
+bulk RNA-seq, ATAC-seq, H3K27ac and H3K4me3 ChIP-seq from human, chimpanzee and rhesus macaque
+iPSC-derived astrocytes, and in situ Hi-C from human and chimpanzee iPSC-derived astrocytes and
+human primary fetal astrocytes:
 
 | Assay | ArrayExpress | ENA project |
 |---|---|---|
@@ -128,3 +138,11 @@ Check the size before downloading: the RNA-seq, ATAC and ChIP runs are 1–6 GB 
 are 150+ GB each. The guides quote a few of the study's published results as examples of what each
 analysis produces. They are there for illustration, not as numbers you should expect to reproduce
 exactly.
+
+::: {.callout-note}
+## Example configs
+Each pipeline's `config.yaml` is a generic single-species default. For this study's
+cross-species set-up (consensus genome, per-species Hi-C genomes), copy the complete configs in
+`pipelines/<assay>/examples/ciuba2025.yaml`, as described in
+[Processing pipelines](../pipelines/README.md#example-profiles).
+:::

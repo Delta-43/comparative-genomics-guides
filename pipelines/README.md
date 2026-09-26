@@ -99,6 +99,34 @@ For your own ENA/SRA study, download its run table with the ENA portal API (fiel
 `run_accession,sample_alias,library_layout,read_count,fastq_md5,fastq_ftp`) and provide a
 `--species-map` if it has several species.
 
+### Example profiles
+
+Each `config.yaml` is a generic single-species starting point. The `examples/` folders hold
+complete configs for the example study, built from its public ArrayExpress protocols. They show
+what a real cross-species set-up looks like:
+
+| Profile | Data | Set-up |
+|---|---|---|
+| [`rnaseq/examples/ciuba2025.yaml`](https://github.com/Delta-43/comparative-genomics-guides/blob/main/pipelines/rnaseq/examples/ciuba2025.yaml) | E-MTAB-13252 | All species on one masked hg38 consensus genome; STAR defaults |
+| [`chip_atac/examples/ciuba2025.yaml`](https://github.com/Delta-43/comparative-genomics-guides/blob/main/pipelines/chip_atac/examples/ciuba2025.yaml) | E-MTAB-13253/4/5 | ATAC-seq and H3K27ac/H3K4me3 on the consensus genome; bowtie2 defaults; no input controls |
+| [`hic/examples/ciuba2025.yaml`](https://github.com/Delta-43/comparative-genomics-guides/blob/main/pipelines/hic/examples/ciuba2025.yaml) | E-MTAB-13259 | Each species on its own genome (hg38, panTro6) with Juicer defaults |
+
+`consensus_genome/config.yaml` already builds this study's consensus (hg38 masked against panTro6
+and rheMac10). Copy a profile over `config.yaml` rather than passing it with `--configfile`:
+Snakemake merges nested settings, so the default genome would stay in the config alongside the
+profile's.
+
+```bash
+cd rnaseq
+cp examples/ciuba2025.yaml config.yaml
+python ../demo_data/make_samples.py ../demo_data/E-MTAB-13252_RNA-seq.ena.tsv \
+    --pipeline rnaseq --outdir ciuba2025_data/rnaseq
+snakemake --use-conda --cores 16 -n
+```
+
+Each profile's header lists what to download or build first. All three dry-run cleanly on sheets
+generated from the ENA tables.
+
 ## Design choices and defaults
 
 Defaults follow widely used community practice (ENCODE, nf-core, HBC training materials). Every

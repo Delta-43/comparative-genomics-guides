@@ -63,7 +63,7 @@ for r in sorted(rows, key=lambda r: (r["sample_alias"], r["run_accession"])):
         fq = f"{name}_R{i}.fastq.gz"
         dl.write(f"curl -sS -C - -o {fq} https://{u}\n")
         md5.write(f"{m}  {fq}\n")
-        fqs.append(os.path.join(a.outdir, fq))
+        fqs.append(os.path.join(os.path.abspath(a.outdir), fq))
     extra = {"rnaseq": f"{line}\t{sp}", "chip_atac": f"{sp}\t", "hic": genome}[a.pipeline]
     out.write(f"{name}\t{fqs[0]}\t{fqs[1]}\t{extra}\n")
     kept += 1

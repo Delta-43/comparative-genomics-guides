@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------------------------------------
+# Example profile: the RNA-seq data of Ciuba et al. 2025, Cell Stem Cell 32:426-444
+# (doi:10.1016/j.stem.2024.12.011), ArrayExpress E-MTAB-13252.
+#
+# A worked example of a cross-species set-up, not a recommended default. Settings follow the
+# study's public ArrayExpress protocol: poly-A libraries (KAPA HyperPrep), 100 bp paired-end reads,
+# STAR with default options against an hg38-backbone consensus genome masked against chimpanzee
+# (panTro6) and macaque (rheMac10), and BPM-normalised bigWigs.
+#
+# This is a COMPLETE config. Copy it over config.yaml rather than passing it with --configfile:
+# Snakemake merges nested keys, so the default GRCh38 genome would stay in `genomes` and switch
+# the pipeline into mixed-species mode.
+#   cp examples/ciuba2025.yaml config.yaml && snakemake --use-conda --cores 16 -n
+#
+# Before running:
+#   1. Build the consensus genome: pipelines/consensus_genome (its default config is this study's).
+#   2. Write the sample sheet: python ../demo_data/make_samples.py \
+#        ../demo_data/E-MTAB-13252_RNA-seq.ena.tsv --pipeline rnaseq --outdir ciuba2025_data/rnaseq
+#      then run ciuba2025_data/rnaseq/download.sh.
+#   3. Download a UCSC-named hg38 annotation, e.g. GENCODE v46 (the consensus keeps hg38
+#      coordinates and chr1-style names, so hg38 annotations apply unchanged).
+# ---------------------------------------------------------------------------------------------
+samples: "ciuba2025_data/rnaseq/samples.tsv"
+outdir: "results_ciuba2025"
+
+# One genome: every species is aligned to the same masked hg38 consensus, so counts are directly
+# comparable across species (see guides/appendix-comparative-genomics.md).
+genomes:
+  hg38_consensus:
+    fasta: "../consensus_genome/results/hg38_panTro6_rheMac10.consensus.ucsc.fa"
+    gtf:   "resources/gencode.v46.annotation.gtf"
+
+strandedness: "auto"            # inferred from the data; don't assume it from the kit name
+
+trim_galore_args:   ""
+star_args:          ""          # STAR default options, as in the public protocol
+featurecounts_args: "-p --countReadPairs -t exon -g gene_id"
+sjdb_overhang: 99               # 100 bp reads: max(read length) - 1
+bigwig_binsize: 10
+
+bbsplit_ambiguous: "toss"       # unused with one genome
+bbsplit_xmx: "96g"
+
+threads: {default: 4, star: 8, trim_galore: 4, featurecounts: 8, bbsplit: 16, bamcoverage: 4}
+mem_mb:  {star: 36000, star_index: 40000}

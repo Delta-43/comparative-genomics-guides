@@ -318,7 +318,15 @@ macaque fetal cortex data (processed with Cell Ranger against a consensus genome
 genes found in iPSC-derived astrocytes.
 :::
 
-## 13. Exercises
+## 13. Reproducibility checklist and exercises
+
+- [ ] Cell Ranger version and reference (name and build) recorded; `snakemake --report` and each `outs/web_summary.html` saved.
+- [ ] QC thresholds (UMIs, detected genes, mitochondrial %) and the number of cells removed at each step written down.
+- [ ] `set.seed()` called before every random step (doublet simulation, PCA approximations, clustering, UMAP).
+- [ ] Clustering resolution and annotation reference saved; `sessionInfo()` saved with the results.
+- [ ] Pseudobulk tests use samples (individuals), not cells, as replicates.
+
+**Exercises**
 
 1. Re-cluster PBMC 3k with `k = 5` and `k = 50`. How does the number of clusters change, and what
    happens to the mean silhouette width?

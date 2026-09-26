@@ -332,7 +332,15 @@ species, rather than new boundaries. Another public comparative dataset: human a
 iPSC Hi-C from [Eres *et al.* 2019](https://doi.org/10.1371/journal.pgen.1008278).
 :::
 
-## 11. Exercises
+## 11. Reproducibility checklist and exercises
+
+- [ ] Genome FASTA version, restriction enzyme and Juicer commit recorded; `snakemake --report` saved.
+- [ ] Library statistics (`results/hic/<sample>.inter_30.txt`: valid pairs, cis/trans, long-range share) reviewed per sample.
+- [ ] Resolution, normalisation (e.g. KR) and caller parameters (TopDom window, HiCCUPS resolutions) saved with every domain and loop set.
+- [ ] `set.seed()` called before random background or permutation tests; `sessionInfo()` saved.
+- [ ] Samples compared at matched depth, or the depth difference noted.
+
+**Exercises**
 
 1. Your library's intra-chromosomal contacts are 90 % shorter than 20 kb. What went wrong?
 2. Why can't you compare two samples' maps using KR-normalised values alone, if one has twice

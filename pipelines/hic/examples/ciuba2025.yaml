@@ -1,0 +1,46 @@
+# ---------------------------------------------------------------------------------------------
+# Example profile: the Hi-C data of Ciuba et al. 2025, Cell Stem Cell 32:426-444
+# (doi:10.1016/j.stem.2024.12.011), ArrayExpress E-MTAB-13259.
+#
+# A worked example of a cross-species set-up, not a recommended default. Settings follow the
+# study's public ArrayExpress protocol: in situ Hi-C as in Rao et al. 2014, 100 bp paired-end reads,
+# each species aligned to its OWN genome with the Juicer pipeline at default settings. The deposit
+# has human (iPSC-derived and primary fetal) and chimpanzee samples; each sample's `genome` column
+# (written by make_samples.py) picks hg38 or panTro6.
+#
+# This is a COMPLETE config. Copy it over config.yaml rather than passing it with --configfile:
+# Snakemake merges nested keys.
+#   cp examples/ciuba2025.yaml config.yaml && snakemake --use-conda --cores 32 -n
+#
+# Before running:
+#   1. Genomes: pipelines/consensus_genome downloads the hg38 and panTro6 assemblies into
+#      ../consensus_genome/results/genomes/ (or fetch them from hgdownload.soe.ucsc.edu yourself).
+#   2. Sample sheet: python ../demo_data/make_samples.py ../demo_data/E-MTAB-13259_Hi-C.ena.tsv \
+#        --pipeline hic --outdir ciuba2025_data/hic     (then run the download.sh it writes)
+# ---------------------------------------------------------------------------------------------
+samples: "ciuba2025_data/hic/samples.tsv"
+outdir: "results_ciuba2025"
+
+# The deposit records only "Restriction Digest". Rao et al. 2014 in situ Hi-C used MboI; confirm
+# the enzyme for your own libraries, because a wrong enzyme file skews Juicer's fragment filtering.
+enzyme: "MboI"
+
+genomes:
+  hg38:
+    fasta: "../consensus_genome/results/genomes/hg38/hg38.fa"
+    chroms: [chr1, chr2, chr3, chr4, chr5, chr6, chr7, chr8, chr9, chr10, chr11, chr12, chr13, chr14,
+             chr15, chr16, chr17, chr18, chr19, chr20, chr21, chr22, chrX]
+  panTro6:                       # chimpanzee: human chr2 is two chromosomes, 2A and 2B
+    fasta: "../consensus_genome/results/genomes/panTro6/panTro6.fa"
+    chroms: [chr1, chr2A, chr2B, chr3, chr4, chr5, chr6, chr7, chr8, chr9, chr10, chr11, chr12, chr13,
+             chr14, chr15, chr16, chr17, chr18, chr19, chr20, chr21, chr22, chrX]
+
+trim_galore_args: "--paired"
+loop_caller: "hiccups"
+hiccups_resolutions: "5000,10000,25000"
+mustache_resolution: 5000
+topdom_window: 4                # TopDom runs at 25 kb, the resolution used in the study
+juicer_commit: "177eb610397e4207fc56db1df169b2d08d06d43a"
+juicer_tools_url: "https://github.com/aidenlab/Juicebox/releases/download/v2.20.00/juicer_tools.2.20.00.jar"
+threads: {default: 4, juicer: 16, trim_galore: 4}
+mem_mb: {dump: 8000}

@@ -270,7 +270,15 @@ the same number of positions), measure RNA/DNA barcode ratios, and compare the v
 [MPRAnalyze](https://bioconductor.org/packages/MPRAnalyze/) or
 [mpra](https://bioconductor.org/packages/mpra/).
 
-## 12. Exercises
+## 12. Reproducibility checklist and exercises
+
+- [ ] Genome FASTA, GTF and blacklist versions recorded, with matching chromosome names; `snakemake --report` saved.
+- [ ] FRiP, TSS enrichment and fragment-size QC (`results/qc/`) reviewed for every sample before any comparison.
+- [ ] The consensus peak set and how it was built (overlap rule, minimum number of samples) saved with the results.
+- [ ] `set.seed()` called before random background regions or permutation tests; `sessionInfo()` saved.
+- [ ] Every excluded sample and its technical reason written down.
+
+**Exercises**
 
 1. Two samples have FRiP 0.35 and 0.12. What happens to their DESeq2 size factors, and how could
    that bias a differential test?

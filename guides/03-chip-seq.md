@@ -265,7 +265,15 @@ This removes IP-to-IP efficiency differences without letting each species' own b
 set its normalisation.
 :::
 
-## 12. Exercises
+## 12. Reproducibility checklist and exercises
+
+- [ ] Genome FASTA and blacklist versions recorded, with matching chromosome names; `snakemake --report` saved.
+- [ ] Antibody (vendor, catalogue and lot number) and the control used (input, IgG or none) written down.
+- [ ] FRiP and fingerprint QC (`results/qc/`) reviewed for every sample before any comparison.
+- [ ] Peak-calling mode (narrow or broad) and the consensus-peak rule saved with the results.
+- [ ] `sessionInfo()` saved; every excluded sample and its technical reason written down.
+
+**Exercises**
 
 1. A TF ChIP has FRiP 0.4 % and NSC 1.02. What would you conclude before looking at any
    differential result?
