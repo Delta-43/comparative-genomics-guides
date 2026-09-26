@@ -24,6 +24,7 @@
   <a href="#-tech-stack">Tech Stack</a> •
   <a href="#-project-structure">Structure</a> •
   <a href="#-contributing">Contributing</a> •
+  <a href="#-acknowledgements">Acknowledgements</a> •
   <a href="#-license">License</a>
 </p>
 
@@ -184,6 +185,21 @@ Corrections, questions and reports from real runs are all welcome. Please open a
 marked above as not yet run on full-size data are especially useful. For changes, open a pull
 request against `main`. If you edit an R block in a guide, please run it first. To preview the
 website locally, build it with `tools/build_site.sh` (it needs [Quarto](https://quarto.org)).
+
+## 🙏 Acknowledgements
+
+The guides were developed at:
+
+> **Nencki Institute of Experimental Biology**, Warsaw, Poland<br>
+> **Dioscuri Centre for Chromatin Biology and Epigenomics**, Nencki Institute of Experimental Biology,
+> Polish Academy of Sciences<br>
+> 3 Pasteur Street, 02-093 Warsaw, Poland
+
+The author thanks **Aleksandra Pękowska**, **Katarzyna Ciuba**, **Aleksandra Piotrowska** and
+**Eryk Duński** for their collaboration and support.
+
+The page structure is inspired by the openly licensed training materials of the
+[Harvard Chan Bioinformatics Core (HBC)](https://github.com/hbctraining).
 
 ## 📄 License
 

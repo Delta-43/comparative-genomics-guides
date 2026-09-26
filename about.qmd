@@ -47,6 +47,16 @@ original author and source are credited. The pipeline code is released under the
 
 ## Acknowledgements
 
+The guides were developed at:
+
+> **Nencki Institute of Experimental Biology**, Warsaw, Poland<br>
+> **Dioscuri Centre for Chromatin Biology and Epigenomics**, Nencki Institute of Experimental Biology,
+> Polish Academy of Sciences<br>
+> 3 Pasteur Street, 02-093 Warsaw, Poland
+
+The author thanks **Aleksandra Pękowska**, **Katarzyna Ciuba**, **Aleksandra Piotrowska** and
+**Eryk Duński** for their collaboration and support.
+
 The page structure is inspired by the openly licensed training materials of the
 [Harvard Chan Bioinformatics Core (HBC)](https://github.com/hbctraining). Guides link to HBC
 lessons wherever those go deeper.
