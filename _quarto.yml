@@ -20,7 +20,7 @@ project:
 
 website:
   title: "Functional Genomics Guides"
-  description: "Open, step-by-step guides from raw sequencing reads to biological inference: RNA-seq, ATAC-seq, ChIP-seq, Hi-C and scRNA-seq."
+  description: "Open reference guides from raw sequencing reads to biological inference: RNA-seq, ATAC-seq, ChIP-seq, Hi-C and scRNA-seq."
   site-url: "https://delta-43.github.io/comparative-genomics-guides/"
   repo-url: "https://github.com/Delta-43/comparative-genomics-guides"
   repo-actions: [source, issue]

@@ -139,8 +139,9 @@ logic applies to peaks (ATAC/ChIP), loops (Hi-C) and pseudobulk cell types (scRN
 The guides use Ciuba *et al.* 2025, *Cell Stem Cell* 32:426–444
 ([doi:10.1016/j.stem.2024.12.011](https://doi.org/10.1016/j.stem.2024.12.011)) as a worked
 example. It aligned RNA-seq from human, chimpanzee and macaque iPSC-derived astrocytes to an
-hg38-based consensus genome masked against panTro6 and rheMac10. It aligned ATAC-seq and ChIP-seq
-to each species' own genome and compared them via liftOver, and assigned expression and
+hg38-based consensus genome masked against panTro6 and rheMac10. For ATAC-seq and ChIP-seq it
+mostly aligned each species to its own genome and compared peaks via liftOver, using the consensus
+genome only where an analysis needed one shared coordinate system. It assigned expression and
 enhancer changes to the human lineage with the outgroup logic above. Raw data: ArrayExpress
 E-MTAB-13252 (RNA-seq), E-MTAB-13253 (ATAC-seq), E-MTAB-13254/-13255 (H3K27ac/H3K4me3
 ChIP-seq), E-MTAB-13259 (Hi-C).

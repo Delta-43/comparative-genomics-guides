@@ -4,12 +4,12 @@ subtitle: "From FASTQ to differential accessibility, annotation, motifs and foot
 ---
 
 ::: {.callout-tip}
-## Learning objectives
-- Plan an ATAC-seq experiment and know the QC metrics that show it worked.
-- Process paired-end reads into filtered, Tn5-corrected alignments and peak calls.
-- Build a consensus peak set, count reads and test for differential accessibility in R.
-- Annotate peaks, look for enriched motifs, and understand what footprinting can add.
-- Interpret accessibility changes cautiously, and extend the analysis across species.
+## What this guide covers
+- Planning an ATAC-seq experiment, and the QC metrics that show it worked.
+- Processing paired-end reads into filtered, Tn5-corrected alignments and peak calls.
+- Building a consensus peak set, counting reads and testing for differential accessibility in R.
+- Annotating peaks, looking for enriched motifs, and what footprinting can add.
+- Interpreting accessibility changes cautiously, and extending the analysis across species.
 
 **Time:** about 3 hours. **You need:** the set-up from [Getting started](00-getting-started.md).
 :::

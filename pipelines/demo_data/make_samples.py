@@ -10,6 +10,10 @@ One row is written per sequencing RUN (sample = <line>_<run accession>) so no da
 Several runs of the same library are re-sequencing (technical replicates): sum their counts in R
 (RNA-seq), merge BAMs (the chip_atac `group` column pools them for peak calling), or merge .hic
 files with Juicer's mega.sh (Hi-C).
+
+FASTQ paths in samples.tsv are bare file names: the pipelines resolve them against the folder that
+holds samples.tsv, so the sheet stays valid if you move the whole data folder.
+--species keeps one species (e.g. chimp or panTro6), for pipelines run once per species' own genome.
 """
 import argparse, csv, os, re, sys
 
@@ -35,6 +39,7 @@ ap.add_argument("--outdir", required=True, help="where FASTQs will be downloaded
 ap.add_argument("--species-map", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "species_map.tsv"),
                 help="TSV of regex, species, genome used to label samples (default: species_map.tsv next to this script)")
 ap.add_argument("--min-reads", type=float, default=5e6, help="skip shallow runs, e.g. small QC libraries (default 5M read pairs)")
+ap.add_argument("--species", help="keep only this species or genome from the species map (e.g. chimp, panTro6)")
 a = ap.parse_args()
 SPECIES = load_species_map(a.species_map)
 
@@ -55,6 +60,8 @@ for r in sorted(rows, key=lambda r: (r["sample_alias"], r["run_accession"])):
         continue
     line = re.sub(r"[^A-Za-z0-9]+", "", r["sample_alias"].split(":", 1)[-1].split("_")[0])
     sp, genome = species_of(line, SPECIES)
+    if a.species and a.species not in (sp, genome):
+        continue
     rep = "_".join(r["sample_alias"].split(":", 1)[-1].split("_")[1:]) or "1"
     name = f"{sp}_{line}_{re.sub(r'[^A-Za-z0-9]+', '', rep)}_{r['run_accession']}"
     urls, sums = r["fastq_ftp"].split(";"), r["fastq_md5"].split(";")
@@ -63,10 +70,12 @@ for r in sorted(rows, key=lambda r: (r["sample_alias"], r["run_accession"])):
         fq = f"{name}_R{i}.fastq.gz"
         dl.write(f"curl -sS -C - -o {fq} https://{u}\n")
         md5.write(f"{m}  {fq}\n")
-        fqs.append(os.path.join(os.path.abspath(a.outdir), fq))
+        fqs.append(fq)                   # relative to samples.tsv (see docstring)
     extra = {"rnaseq": f"{line}\t{sp}", "chip_atac": f"{sp}\t", "hic": genome}[a.pipeline]
     out.write(f"{name}\t{fqs[0]}\t{fqs[1]}\t{extra}\n")
     kept += 1
 dl.write("md5sum -c md5sums.txt\n")
+if not kept:
+    sys.exit(f"no runs kept: check --species ({a.species}) against the species map")
 print(f"{kept} runs written to {a.outdir}/samples.tsv ({skipped} skipped: single-end or < {a.min_reads:.0f} reads)")
 print(f"download with: bash {a.outdir}/download.sh")

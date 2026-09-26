@@ -4,11 +4,15 @@ title: "About these guides"
 
 ## What they are
 
-Open, step-by-step guides for analysing five common kinds of functional genomics data (bulk
+Open reference guides for analysing five common kinds of functional genomics data (bulk
 RNA-seq, ATAC-seq, ChIP-seq, Hi-C and single-cell RNA-seq), from raw reads to biological
 interpretation. Each guide pairs a reusable processing pipeline with worked R code, explains why
 each step is done the way it is, and states plainly what the results can and cannot show. An
 extension in every guide, and a shared appendix, cover comparisons across species.
+
+The guides document one practitioner's way of doing each analysis. They are not an authoritative
+standard or a formal course: other valid approaches exist, and settings should be adapted to your
+own data and checked against each tool's documentation.
 
 ## How they were checked
 
@@ -18,8 +22,8 @@ extension in every guide, and a shared appendix, cover comparisons across specie
   [`pipelines/envs/r_analysis.yaml`](https://github.com/Delta-43/comparative-genomics-guides/blob/main/pipelines/envs/r_analysis.yaml).
 - **Pipelines:** the RNA-seq and ChIP/ATAC pipelines were run end to end on simulated data, and
   their results matched the simulated truth. The Hi-C, scRNA-seq and consensus-genome pipelines are
-  dry-run tested. Every pipeline's conda environment has been built from its file. Full runs on real
-  data are planned.
+  dry-run tested. Every pipeline's conda environment has been built from its file. No pipeline has been run
+  on a full-size real dataset; reports from real runs are welcome.
 - **Facts and thresholds:** QC thresholds were checked against ENCODE's published standards, tool
   options against each tool's own documentation or source code, and references against PubMed.
 
@@ -43,6 +47,6 @@ original author and source are credited. The pipeline code is released under the
 
 ## Acknowledgements
 
-The lesson structure is inspired by the openly licensed training materials of the
+The page structure is inspired by the openly licensed training materials of the
 [Harvard Chan Bioinformatics Core (HBC)](https://github.com/hbctraining). Guides link to HBC
 lessons wherever those go deeper.

@@ -1,6 +1,6 @@
 <h1 align="center">Functional Genomics Guides</h1>
 
-<p align="center"><i>Step-by-step guides and ready-to-run Snakemake pipelines that take RNA-seq, ATAC-seq, ChIP-seq, Hi-C and single-cell RNA-seq data from raw reads to biological inference, and explain every choice along the way.</i></p>
+<p align="center"><i>Reference guides and ready-to-run Snakemake pipelines that document one way of taking RNA-seq, ATAC-seq, ChIP-seq, Hi-C and single-cell RNA-seq data from raw reads to biological inference, with the reasoning behind each choice.</i></p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/Content-CC%20BY%204.0-lightgrey.svg" alt="Content licence: CC BY 4.0"></a>
@@ -27,7 +27,7 @@
 </p>
 
 > [!TIP]
-> You don't need to install anything to start learning. The guides are easiest to read on the
+> You don't need to install anything to start reading. The guides are easiest to read on the
 > website: **https://delta-43.github.io/comparative-genomics-guides/**
 
 ---
@@ -39,17 +39,22 @@ design, raw-read QC, processing, quality checkpoints, statistics, plots and inte
 R code you can run. The second is a **Snakemake pipeline** in [`pipelines/`](pipelines/) that turns your
 FASTQ files into the processed files each guide's analysis starts from.
 
-- **One standard path per assay** — each guide teaches one well-established workflow (for example STAR + featureCounts + DESeq2 for RNA-seq). At each key decision point, a pros/cons box names the main alternative (Salmon, cooler, Seurat, ...) and says when to prefer it.
+- **One documented path per assay** — each guide follows one workflow built from widely used tools (for example STAR + featureCounts + DESeq2 for RNA-seq). At each key decision point, a pros/cons box names the main alternative (Salmon, cooler, Seurat, ...) and says when to prefer it.
 - **Quality checkpoints with numbers** — named metrics (strandedness, FRiP, TSS enrichment, fragment sizes, cis/trans ratio, mitochondrial fraction) with thresholds drawn from ENCODE and tool documentation. They tell you whether your data is good enough to continue.
 - **Inference, not just commands** — every guide ends with what your results can and can't support, common pitfalls, and troubleshooting.
 - **Tested R code** — every R block in the guides has been executed on public example data (airway, PBMC 3k and others) under R 4.5 / Bioconductor 3.22.
-- **Comparative extension** — each guide first teaches the standard single-species analysis, then ends with a cross-species module (liftOver, consensus genomes, outgroup logic). An appendix covers the shared comparative-genomics groundwork.
+- **Comparative extension** — each guide first covers the single-species analysis, then ends with a cross-species module (liftOver, consensus genomes, outgroup logic). An appendix covers the shared comparative-genomics groundwork.
 - **Worked example on open data** — a published study of primate astrocyte evolution (Ciuba et al. 2025, *Cell Stem Cell*, [doi:10.1016/j.stem.2024.12.011](https://doi.org/10.1016/j.stem.2024.12.011)) and its ArrayExpress data illustrate what each analysis produces. It is an example, not a target to reproduce.
 
 ## 🎓 Who it's for
 
-Researchers who have, or are planning, a sequencing experiment and want a standard starting
-point they can understand, adapt and build on. You don't have to be a bioinformatician.
+Researchers who have, or are planning, a sequencing experiment and want a documented, worked
+example of one way to analyse it, to compare with their own approach and adapt. You don't have to
+be a bioinformatician.
+
+**A reference, not a standard.** The guides record one practitioner's workflow. Other valid
+approaches exist, and the right settings depend on your data, so check each tool's own
+documentation before relying on a choice made here.
 
 **What you need to know first:**
 

@@ -6,9 +6,9 @@ toc: false
 
 ::: {.hero}
 # From raw reads to biological inference
-<p class="lead">Step-by-step, reusable guides for analysing RNA-seq, ATAC-seq, ChIP-seq, Hi-C and
-single-cell RNA-seq data. Each one has a ready-to-run Snakemake pipeline, explains every choice,
-and ends with guidance on what your results can and can't tell you.</p>
+<p class="lead">Reference guides for analysing RNA-seq, ATAC-seq, ChIP-seq, Hi-C and single-cell
+RNA-seq data. Each one documents one way of taking the data from raw reads to interpretation, with
+a ready-to-run Snakemake pipeline, the reasoning behind each choice, and the main alternatives.</p>
 :::
 
 ::: {.callout-note}
@@ -18,24 +18,26 @@ run end to end on simulated data; none has yet been run on a full-size real data
 how to report problems.
 :::
 
-## Who these guides are for
+## What these guides are
 
-Researchers who have (or are planning) a sequencing experiment and want a **robust, standard
-starting point** they can understand, adapt and build on. You don't have to be a
-bioinformatician. If you can use a terminal and have met R before, you have enough to start.
+A record of one practitioner's workflow for each assay, written up so others can follow,
+compare and adapt it. They are **a reference, not an authoritative standard**: other valid
+approaches exist, and the right choices depend on your data. Where a common alternative exists, the
+guides name it. Check each tool's own documentation before relying on a setting.
 
-## Learning objectives
+They are written for researchers who have (or are planning) a sequencing experiment. You don't
+have to be a bioinformatician. If you can use a terminal and have met R before, you can follow
+them.
 
-By working through a guide you will be able to:
+## What each guide covers
 
-- Plan an experiment that can answer your question: replicates, depth, controls and batches.
-- Turn raw FASTQ files into analysis-ready data with a reproducible pipeline that runs on a
+- Experimental design: replicates, depth, controls and batches.
+- Turning raw FASTQ files into analysis-ready data with a reproducible pipeline that runs on a
   workstation or an HPC cluster.
-- Judge data quality at every step, using named metrics with sensible thresholds.
-- Run the standard statistical analysis for the assay, and know when to reach for an
-  alternative.
-- Make the figures that actually test your conclusions, and read them critically.
-- Extend any analysis across species (liftOver, consensus genomes, outgroup logic).
+- Data quality at every step, using named metrics with thresholds from published standards.
+- A commonly used statistical analysis for the assay, and when an alternative may suit better.
+- The figures that test a conclusion, and how to read them.
+- Comparing across species (liftOver, consensus genomes, outgroup logic).
 
 ## The guides
 
@@ -101,14 +103,14 @@ liftOver, orthologs, consensus genomes and outgroup logic, shared by all guides.
 
 ## How every guide is organised
 
-| Step | What you do | You will be able to answer |
+| Step | What it covers | Question it addresses |
 |---|---|---|
 | 1. Design | Replicates, depth, controls, confounders | *Can this experiment answer my question?* |
 | 2. Raw-read QC | FastQC / MultiQC | *Is the sequencing usable?* |
 | 3. Processing | Run `pipelines/<assay>` | *What did each step do to my data?* |
 | 4. Processed-data QC | Assay-specific metrics | *Did the assay work?* |
 | 5. Sample-level QC | PCA, correlation, outliers | *Do replicates agree? Is there batch?* |
-| 6. Statistics | The standard test, plus alternatives | *What changed, and how confident am I?* |
+| 6. Statistics | One commonly used test, plus alternatives | *What changed, and how confident am I?* |
 | 7. Visualisation | The plots that test the result | *Does the result look right?* |
 | 8. Interpretation | Annotation, enrichment | *What does it mean biologically?* |
 | 9. Inference | Pros/cons, pitfalls | *What can I claim, and what can't I?* |
@@ -124,8 +126,8 @@ liftOver, orthologs, consensus genomes and outgroup logic, shared by all guides.
 
 ## Example data
 
-The R code in each guide runs on public teaching datasets that Bioconductor downloads for you.
-For practising the processing pipelines, an openly available comparative study of primate
+The R code in each guide runs on public example datasets that Bioconductor downloads for you.
+For trying the processing pipelines, an openly available comparative study of primate
 astrocytes (Ciuba *et al.* 2025, *Cell Stem Cell*, [doi:10.1016/j.stem.2024.12.011](https://doi.org/10.1016/j.stem.2024.12.011))
 provides RNA-seq, ATAC-seq, ChIP-seq and Hi-C from human, chimpanzee and macaque cells
 (ArrayExpress E-MTAB-13252 to 13259). Its results appear in the guides as examples of what each
@@ -133,5 +135,5 @@ analysis produces.
 
 ## Acknowledgements
 
-The teaching structure is modelled on the excellent, openly licensed training materials of the
+The page structure is modelled on the excellent, openly licensed training materials of the
 [Harvard Chan Bioinformatics Core (HBC)](https://github.com/hbctraining).

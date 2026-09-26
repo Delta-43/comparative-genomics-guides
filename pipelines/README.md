@@ -108,7 +108,8 @@ what a real cross-species set-up looks like:
 | Profile | Data | Set-up |
 |---|---|---|
 | [`rnaseq/examples/ciuba2025.yaml`](https://github.com/Delta-43/comparative-genomics-guides/blob/main/pipelines/rnaseq/examples/ciuba2025.yaml) | E-MTAB-13252 | All species on one masked hg38 consensus genome; STAR defaults |
-| [`chip_atac/examples/ciuba2025.yaml`](https://github.com/Delta-43/comparative-genomics-guides/blob/main/pipelines/chip_atac/examples/ciuba2025.yaml) | E-MTAB-13253/4/5 | ATAC-seq and H3K27ac/H3K4me3 on the consensus genome; bowtie2 defaults; no input controls |
+| [`chip_atac/examples/ciuba2025_<genome>.yaml`](https://github.com/Delta-43/comparative-genomics-guides/tree/main/pipelines/chip_atac/examples) | E-MTAB-13253/4/5 | ATAC-seq and H3K27ac/H3K4me3, one run per species on its own genome (`hg38`, `panTro6`, `rheMac10`), then compared by liftOver as in the [ATAC-seq guide](../guides/02-atac-seq.md#11-extension-comparing-species); bowtie2 defaults; no input controls |
+| [`chip_atac/examples/ciuba2025_consensus.yaml`](https://github.com/Delta-43/comparative-genomics-guides/blob/main/pipelines/chip_atac/examples/ciuba2025_consensus.yaml) | E-MTAB-13253/4/5 | Secondary route: all species on the consensus genome, for analyses that need shared coordinates from the start |
 | [`hic/examples/ciuba2025.yaml`](https://github.com/Delta-43/comparative-genomics-guides/blob/main/pipelines/hic/examples/ciuba2025.yaml) | E-MTAB-13259 | Each species on its own genome (hg38, panTro6) with Juicer defaults |
 
 `consensus_genome/config.yaml` already builds this study's consensus (hg38 masked against panTro6
@@ -124,8 +125,9 @@ python ../demo_data/make_samples.py ../demo_data/E-MTAB-13252_RNA-seq.ena.tsv \
 snakemake --use-conda --cores 16 -n
 ```
 
-Each profile's header lists what to download or build first. All three dry-run cleanly on sheets
-generated from the ENA tables.
+For a per-species pipeline, `make_samples.py --species <genome>` (e.g. `--species panTro6`) writes
+that species' samples only. Each profile's header lists what to download or build first, and the
+exact commands. Every profile dry-runs cleanly on sheets generated from the ENA tables.
 
 ## Design choices and defaults
 

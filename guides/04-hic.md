@@ -4,12 +4,12 @@ subtitle: "Contact maps, compartments, domains, loops and how they differ"
 ---
 
 ::: {.callout-tip}
-## Learning objectives
-- Understand what a Hi-C contact map measures, and plan depth for the features you want.
-- Process reads into a `.hic` file with Juicer, and judge library quality.
-- Read and normalise contact matrices in R; plot maps and distance-decay curves.
-- Call and interpret compartments, TADs and loops, and validate loops with aggregate analysis.
-- Compare 3D structure between conditions or species, and know the limits of each comparison.
+## What this guide covers
+- What a Hi-C contact map measures, and how to plan depth for the features of interest.
+- Processing reads into a `.hic` file with Juicer, and judging library quality.
+- Reading and normalising contact matrices in R; plotting maps and distance-decay curves.
+- Calling and interpreting compartments, TADs and loops, and validating loops with aggregate analysis.
+- Comparing 3D structure between conditions or species, and the limits of each comparison.
 
 **Time:** about 4 hours. **You need:** the set-up from [Getting started](00-getting-started.md);
 a large workstation or HPC for processing (Hi-C libraries are often billions of reads).

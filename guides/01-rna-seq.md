@@ -4,14 +4,13 @@ subtitle: "Bulk RNA-seq with STAR, featureCounts and DESeq2"
 ---
 
 ::: {.callout-tip}
-## Learning objectives
-- Design a bulk RNA-seq experiment with enough biological replication to answer your question.
-- Process paired-end FASTQ files into a gene count matrix, and check the data at each step.
-- Explore sample structure (PCA, clustering) and spot outliers and batch effects.
-- Test for differential expression with DESeq2, choose the right design and contrast, and
-  shrink fold changes.
-- Visualise and functionally interpret the results, and know what they can and can't show.
-- Extend the analysis to a comparison across species.
+## What this guide covers
+- Designing a bulk RNA-seq experiment with enough biological replication to answer the question.
+- Processing paired-end FASTQ files into a gene count matrix, with checks at each step.
+- Exploring sample structure (PCA, clustering) to spot outliers and batch effects.
+- Testing for differential expression with DESeq2: design, contrasts and fold-change shrinkage.
+- Visualising and functionally interpreting the results, and what they can and can't show.
+- Extending the analysis to a comparison across species.
 
 **Time:** about 3 hours. **You need:** a terminal, R ≥ 4.4 with Bioconductor, and the set-up
 from [Getting started](00-getting-started.md).

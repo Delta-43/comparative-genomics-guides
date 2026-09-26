@@ -4,14 +4,14 @@ subtitle: "From 10x FASTQ to annotated clusters, pseudobulk DE and abundance tes
 ---
 
 ::: {.callout-tip}
-## Learning objectives
-- Design a single-cell experiment: cells vs samples, multiplexing, batches.
-- Generate count matrices with Cell Ranger, including antibody-capture (CITE-seq / hashtag) data.
-- Run QC, doublet removal, normalisation, dimensionality reduction and clustering in R, and
-  judge clusterings with numbers, not just UMAP pictures.
-- Annotate cell types; test expression differences with pseudobulk and abundance differences
-  with compositional methods.
-- Extend the design and analysis across species.
+## What this guide covers
+- Designing a single-cell experiment: cells vs samples, multiplexing, batches.
+- Generating count matrices with Cell Ranger, including antibody-capture (CITE-seq / hashtag) data.
+- QC, doublet removal, normalisation, dimensionality reduction and clustering in R, and judging
+  clusterings with numbers, not just UMAP pictures.
+- Annotating cell types; testing expression differences with pseudobulk and abundance
+  differences with compositional methods.
+- Extending the design and analysis across species.
 
 **Time:** about 4 hours. **You need:** R ≥ 4.4 with Bioconductor, the set-up from
 [Getting started](00-getting-started.md), and ~16 GB RAM for the example data.

@@ -279,10 +279,12 @@ rule fingerprint:              # ChIP enrichment strength / ATAC signal-to-noise
     shell:  "plotFingerprint -p {threads} -b {input} --labels {params.labels} --skipZeros "
             "--plotFile {output.png} --outQualityMetrics {output.metrics} 2> {log}"
 
-rule tss_bed:
+rule tss_bed:                   # gene starts; transcript starts for GTFs without gene lines (UCSC)
     input:  lambda w: GENOMES[w.genome]["gtf"]
     output: f"{OUT}/ref/{{genome}}/tss.bed"
-    shell:  "(zcat -f {input}) | awk -F'\\t' '$3==\"gene\"{{p=($7==\"+\")?$4-1:$5-1; print $1\"\\t\"p\"\\t\"p+1\"\\t.\\t.\\t\"$7}}' "
+    shell:  "(zcat -f {input}) | awk 'BEGIN{{FS=OFS=\"\\t\"}} $3==\"gene\"||$3==\"transcript\"{{p=($7==\"+\")?$4-1:$5-1; "
+            "r=$1 OFS p OFS p+1 OFS \".\" OFS \".\" OFS $7; if($3==\"gene\"){{g[++ng]=r}}else{{t[++nt]=r}}}} "
+            "END{{if(ng){{for(i=1;i<=ng;i++)print g[i]}}else{{for(i=1;i<=nt;i++)print t[i]}}}}' "
             "| sort -k1,1 -k2,2n -u > {output}"
 
 rule tss_enrichment:           # ATAC: expect a sharp TSS peak (ENCODE TSS enrichment > 7 for hg38)

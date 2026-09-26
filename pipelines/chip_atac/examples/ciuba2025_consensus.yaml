@@ -3,15 +3,18 @@
 # 32:426-444 (doi:10.1016/j.stem.2024.12.011). ArrayExpress: E-MTAB-13253 (ATAC-seq),
 # E-MTAB-13254 (H3K27ac ChIP-seq), E-MTAB-13255 (H3K4me3 ChIP-seq).
 #
-# A worked example of a cross-species set-up, not a recommended default. Settings follow the
-# study's public ArrayExpress protocols: 100 bp paired-end reads, bowtie2 with default options
-# against an hg38-backbone consensus genome masked against chimpanzee (panTro6) and macaque
-# (rheMac10), and RPGC-normalised bigWigs. No ChIP input controls were deposited, so peaks are
-# called without a control.
+# A worked example of a cross-species set-up, not a recommended default. This is the SECONDARY
+# route: every species aligned to one hg38-backbone consensus genome masked against chimpanzee
+# (panTro6) and macaque (rheMac10), for analyses that need all species in the same coordinates
+# from the start. The study's main route for ATAC and ChIP was each species on its own genome,
+# then UCSC liftOver: see ciuba2025_hg38.yaml, ciuba2025_panTro6.yaml and ciuba2025_rheMac10.yaml.
+# Settings follow the public ArrayExpress protocols: 100 bp paired-end reads, bowtie2 with default
+# options, RPGC-normalised bigWigs. No ChIP input controls were deposited, so peaks are called
+# without a control.
 #
 # This is a COMPLETE config. Copy it over config.yaml rather than passing it with --configfile:
 # Snakemake merges nested keys, so the default GRCh38 genome would stay in `genomes`.
-#   cp examples/ciuba2025.yaml config.yaml && snakemake --use-conda --cores 16 -n
+#   cp examples/ciuba2025_consensus.yaml config.yaml && snakemake --use-conda --cores 16 -n
 #
 # One dataset per run. Set `assay` and `samples` below, and give each run its own `outdir`:
 #   ATAC-seq: assay "atac", sheet from E-MTAB-13253_ATAC-seq.ena.tsv
@@ -23,7 +26,7 @@
 # ---------------------------------------------------------------------------------------------
 assay: "atac"
 samples: "ciuba2025_data/atac/samples.tsv"
-outdir: "results_ciuba2025_atac"
+outdir: "results_ciuba2025_atac_consensus"
 
 min_mapq: 30
 remove_duplicates: true

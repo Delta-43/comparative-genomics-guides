@@ -1,0 +1,58 @@
+# ---------------------------------------------------------------------------------------------
+# Example profile: ATAC-seq / histone ChIP-seq of Ciuba et al. 2025, Cell Stem Cell 32:426-444
+# (doi:10.1016/j.stem.2024.12.011), macaque samples on the macaque genome (rheMac10).
+# ArrayExpress: E-MTAB-13253 (ATAC-seq), E-MTAB-13254 (H3K27ac), E-MTAB-13255 (H3K4me3).
+#
+# A worked example of a cross-species set-up, not a recommended default. The study's main route
+# for ATAC and ChIP: align each species to its OWN genome, call peaks there, then compare species
+# by lifting peaks over to hg38 with UCSC liftOver (guides/02-atac-seq.md, section 11). Where an
+# analysis needs all species in one coordinate system from the start, see ciuba2025_consensus.yaml.
+# Files for the three species: ciuba2025_hg38.yaml, ciuba2025_panTro6.yaml, ciuba2025_rheMac10.yaml.
+# Settings follow the public ArrayExpress protocols: 100 bp paired-end reads, bowtie2 with default
+# options, RPGC-normalised bigWigs. No ChIP input controls were deposited.
+#
+# This is a COMPLETE config. Copy it over config.yaml rather than passing it with --configfile:
+# Snakemake merges nested keys, so the default GRCh38 genome would stay in `genomes` and switch
+# the pipeline into mixed-species (BBSplit) mode.
+#   cp examples/ciuba2025_rheMac10.yaml config.yaml && snakemake --use-conda --cores 16 -n
+#
+# One species and one dataset per run. Write this species' sheet with --species:
+#   python ../demo_data/make_samples.py ../demo_data/E-MTAB-13253_ATAC-seq.ena.tsv \
+#       --pipeline chip_atac --species rheMac10 --outdir ciuba2025_data/atac_rheMac10
+# then run the download.sh it writes. For H3K27ac / H3K4me3, use E-MTAB-13254_H3K27ac.ena.tsv /
+# E-MTAB-13255_H3K4me3.ena.tsv and override the dataset on the command line:
+#   snakemake --use-conda --cores 16 --config assay=chip \
+#       samples=ciuba2025_data/h3k27ac_rheMac10/samples.tsv outdir=results_ciuba2025_h3k27ac_rheMac10
+# Genome: pipelines/consensus_genome downloads rheMac10.fa into ../consensus_genome/results/genomes/,
+# or fetch it from https://hgdownload.soe.ucsc.edu/goldenPath/rheMac10/bigZips/.
+# ---------------------------------------------------------------------------------------------
+assay: "atac"
+samples: "ciuba2025_data/atac_rheMac10/samples.tsv"
+outdir: "results_ciuba2025_atac_rheMac10"
+
+min_mapq: 30
+remove_duplicates: true
+atac_shift: true
+use_controls: false             # no input/IgG libraries in the public deposit
+min_fragment_length: 0
+
+genomes:
+  rheMac10:
+    fasta: "../consensus_genome/results/genomes/rheMac10/rheMac10.fa"
+    gtf: "resources/rheMac10.ncbiRefSeq.gtf"      # UCSC: goldenPath/rheMac10/bigZips/genes/ (enables the TSS plot)
+    # No ENCODE blacklist exists for rheMac10. One option: liftOver the hg38 blacklist.
+    effective_genome_size: "auto" # no deepTools table value: count non-N bases
+
+drop_chrom_regex: "^(chrM|MT|M|chrUn.*|Un.*|.*_random|.*_alt|.*_fix|KI[0-9].*|GL[0-9].*|JH[0-9].*|NW_.*)$"
+
+trim_galore_args: ""
+bowtie2_args:     ""            # bowtie2 default options, as in the public protocol. Note the
+                                # default -X 500 drops fragments > 500 bp (multi-nucleosome ATAC).
+macs2_args:       "-f BAMPE --keep-dup all"
+bigwig_binsize: 10
+ignore_for_normalization: "chrX chrY X Y"
+
+bbsplit_ambiguous: "toss"       # unused with one genome
+bbsplit_xmx: "96g"
+
+threads: {default: 4, bowtie2: 8, trim_galore: 4, filter: 4, bbsplit: 16, bamcoverage: 4}

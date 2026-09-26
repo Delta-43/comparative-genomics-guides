@@ -142,7 +142,7 @@ exactly.
 ::: {.callout-note}
 ## Example configs
 Each pipeline's `config.yaml` is a generic single-species default. For this study's
-cross-species set-up (consensus genome, per-species Hi-C genomes), copy the complete configs in
-`pipelines/<assay>/examples/ciuba2025.yaml`, as described in
+cross-species set-up (RNA-seq on a consensus genome; ATAC, ChIP and Hi-C on each species' own
+genome), copy the complete configs in `pipelines/<assay>/examples/`, as described in
 [Processing pipelines](../pipelines/README.md#example-profiles).
 :::

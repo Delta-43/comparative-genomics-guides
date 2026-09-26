@@ -4,12 +4,12 @@ subtitle: "Peak calling, quality control and differential binding"
 ---
 
 ::: {.callout-tip}
-## Learning objectives
-- Design a ChIP-seq experiment with the right controls, depth and replication.
-- Process reads to filtered alignments and narrow or broad peaks.
-- Judge enrichment quality (FRiP, fingerprint, cross-correlation, replicate agreement).
-- Test for differential binding with DiffBind, annotate peaks and find motifs.
-- Integrate binding with expression, and compare binding across species.
+## What this guide covers
+- Designing a ChIP-seq experiment with the right controls, depth and replication.
+- Processing reads to filtered alignments and narrow or broad peaks.
+- Judging enrichment quality (FRiP, fingerprint, cross-correlation, replicate agreement).
+- Testing for differential binding with DiffBind, annotating peaks and finding motifs.
+- Integrating binding with expression, and comparing binding across species.
 
 **Time:** about 3 hours. **You need:** the set-up from [Getting started](00-getting-started.md).
 :::
