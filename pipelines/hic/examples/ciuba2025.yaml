@@ -1,12 +1,15 @@
 # ---------------------------------------------------------------------------------------------
 # Example profile: the Hi-C data of Ciuba et al. 2025, Cell Stem Cell 32:426-444
-# (doi:10.1016/j.stem.2024.12.011), ArrayExpress E-MTAB-13259.
+# (doi:10.1016/j.stem.2024.12.011, open access), ArrayExpress E-MTAB-13259.
 #
 # A worked example of a cross-species set-up, not a recommended default. Settings follow the
-# study's public ArrayExpress protocol: in situ Hi-C as in Rao et al. 2014, 100 bp paired-end reads,
-# each species aligned to its OWN genome with the Juicer pipeline at default settings. The deposit
-# has human (iPSC-derived and primary fetal) and chimpanzee samples; each sample's `genome` column
-# (written by make_samples.py) picks hg38 or panTro6.
+# paper's STAR Methods ("Hi-C data pre-processing", "Identification and interspecies analysis of TAD
+# boundaries"): in situ Hi-C with MboI (Rao et al. 2014), reads trimmed with Trim Galore, each species
+# aligned to its OWN genome (hg38, panTro6) with the Juicer pipeline at default settings, and TopDom
+# domains at 25 kb with a window of 4. The deposit has human (iPSC-derived and primary fetal) and
+# chimpanzee samples, sequenced at 2x100 and 2x150 bp; each sample's `genome` column (written by
+# make_samples.py) picks hg38 or panTro6. Several runs per library are small QC runs; merge each
+# library's runs with Juicer's mega.sh before calling domains.
 #
 # This is a COMPLETE config. Copy it over config.yaml rather than passing it with --configfile:
 # Snakemake merges nested keys.
@@ -21,8 +24,8 @@
 samples: "ciuba2025_data/hic/samples.tsv"
 outdir: "results_ciuba2025"
 
-# The deposit records only "Restriction Digest". Rao et al. 2014 in situ Hi-C used MboI; confirm
-# the enzyme for your own libraries, because a wrong enzyme file skews Juicer's fragment filtering.
+# MboI, as stated in the paper. Change it for your own libraries: a wrong enzyme file skews
+# Juicer's fragment filtering.
 enzyme: "MboI"
 
 genomes:

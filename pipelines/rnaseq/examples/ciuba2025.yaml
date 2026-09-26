@@ -1,11 +1,20 @@
 # ---------------------------------------------------------------------------------------------
 # Example profile: the RNA-seq data of Ciuba et al. 2025, Cell Stem Cell 32:426-444
-# (doi:10.1016/j.stem.2024.12.011), ArrayExpress E-MTAB-13252.
+# (doi:10.1016/j.stem.2024.12.011, open access), ArrayExpress E-MTAB-13252.
 #
 # A worked example of a cross-species set-up, not a recommended default. Settings follow the
-# study's public ArrayExpress protocol: poly-A libraries (KAPA HyperPrep), 100 bp paired-end reads,
-# STAR with default options against an hg38-backbone consensus genome masked against chimpanzee
-# (panTro6) and macaque (rheMac10), and BPM-normalised bigWigs.
+# paper's STAR Methods ("RNA-Seq data pre-processing"): Trim Galore '-q 30 --stringency 3
+# --length 30', STAR with '--outFilterMultimapNmax 1' against a human-backbone consensus genome
+# masked against chimpanzee (panTro6) and macaque (rheMac10), and featureCounts
+# '-p -O --countReadPairs -t exon -g gene_id' with Ensembl's GRCh38 release 101 annotation.
+#
+# Two differences from the paper, both deliberate:
+# - Strandedness. The paper's featureCounts command has no -s (unstranded counting). This profile
+#   infers it per sample instead. KAPA mRNA HyperPrep libraries are reverse-stranded (-s 2), but in
+#   the public deposit 5 of the 16 runs come out -s 1, including one of two runs of the same
+#   library: their read 1 and read 2 files look swapped. Per-sample calls handle both.
+# - The deposit also holds runs of primary fetal astrocytes and runs sequenced at 2x100 and 2x150 bp.
+#   The pipeline processes them all; choose which samples enter your comparison in R.
 #
 # This is a COMPLETE config. Copy it over config.yaml rather than passing it with --configfile:
 # Snakemake merges nested keys, so the default GRCh38 genome would stay in `genomes` and switch
@@ -14,28 +23,29 @@
 #
 # Before running:
 #   1. Build the consensus genome: pipelines/consensus_genome (its default config is this study's).
-#   2. Write the sample sheet: python ../demo_data/make_samples.py \
+#      Use its Ensembl-named output (chromosomes 1, 2, ... MT) to match the Ensembl annotation.
+#   2. Download Homo_sapiens.GRCh38.101.gtf.gz from
+#      https://ftp.ensembl.org/pub/release-101/gtf/homo_sapiens/ and unzip it into resources/.
+#   3. Write the sample sheet: python ../demo_data/make_samples.py \
 #        ../demo_data/E-MTAB-13252_RNA-seq.ena.tsv --pipeline rnaseq --outdir ciuba2025_data/rnaseq
 #      then run ciuba2025_data/rnaseq/download.sh.
-#   3. Download a UCSC-named hg38 annotation, e.g. GENCODE v46 (the consensus keeps hg38
-#      coordinates and chr1-style names, so hg38 annotations apply unchanged).
 # ---------------------------------------------------------------------------------------------
 samples: "ciuba2025_data/rnaseq/samples.tsv"
 outdir: "results_ciuba2025"
 
-# One genome: every species is aligned to the same masked hg38 consensus, so counts are directly
+# One genome: every species is aligned to the same masked consensus, so counts are directly
 # comparable across species (see guides/appendix-comparative-genomics.md).
 genomes:
   hg38_consensus:
-    fasta: "../consensus_genome/results/hg38_panTro6_rheMac10.consensus.ucsc.fa"
-    gtf:   "resources/gencode.v46.annotation.gtf"
+    fasta: "../consensus_genome/results/hg38_panTro6_rheMac10.consensus.ensembl.fa"
+    gtf:   "resources/Homo_sapiens.GRCh38.101.gtf"
 
-strandedness: "auto"            # inferred from the data; don't assume it from the kit name
+strandedness: "auto"            # per sample; see the note above
 
-trim_galore_args:   ""
-star_args:          ""          # STAR default options, as in the public protocol
-featurecounts_args: "-p --countReadPairs -t exon -g gene_id"
-sjdb_overhang: 99               # 100 bp reads: max(read length) - 1
+trim_galore_args:   "-q 30 --stringency 3 --length 30"
+star_args:          "--outFilterMultimapNmax 1"            # uniquely mapped reads only
+featurecounts_args: "-p -O --countReadPairs -t exon -g gene_id"   # -O: pairs overlapping 2 genes count for both
+sjdb_overhang: 149              # max(read length) - 1 for the 2x150 bp runs (STAR's recommendation)
 bigwig_binsize: 10
 
 bbsplit_ambiguous: "toss"       # unused with one genome

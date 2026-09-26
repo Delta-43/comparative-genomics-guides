@@ -99,11 +99,16 @@ and a wrong setting silently loses or mis-assigns most reads. The pipeline infer
 # column 4 = counts if read 2 is (featureCounts -s 2). The larger one wins.
 awk 'NR>4 {s1+=$3; s2+=$4} END {print "s1:", s1, " s2:", s2, " ratio:", s1/s2}' \
     results/star/<sample>.<genome>.ReadsPerGene.out.tab
-cat results/qc/strandedness.txt       # the pipeline's call: 0, 1 or 2
+cat results/qc/strandedness.txt       # the pipeline's call per sample: 0, 1 or 2
 ```
 
 Most current stranded kits (dUTP-based: Illumina Stranded mRNA, NEBNext Ultra II Directional,
 KAPA mRNA HyperPrep) are **reverse-stranded, `-s 2`**. A ratio near 1 means unstranded (`-s 0`).
+
+The pipeline calls each sample separately and counts each with its own value. Samples from one
+library prep should agree. If a few come out `-s 1` while the rest are `-s 2`, read 1 and read 2
+were most likely swapped for those files (this happens in public archives, even between runs of
+the same library), and the pipeline prints a warning naming them.
 
 **4.4 Counting (featureCounts).** Counts each read pair once for the gene whose exons it
 overlaps. By default, pairs overlapping two genes and multi-mapping pairs are left uncounted.

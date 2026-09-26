@@ -18,7 +18,8 @@ laptop (small data), a workstation or an HPC cluster.
 ## Testing status
 - **`rnaseq` and `chip_atac` have been run end to end** (both `atac` and `chip` modes, with an input
   control) on small simulated datasets, using the conda environments in `envs/`. On a spliced,
-  reverse-stranded simulation, the RNA-seq pipeline inferred `-s 2`, and DESeq2 on its counts
+  reverse-stranded simulation, the RNA-seq pipeline inferred `-s 2` (and `-s 1` for a sample whose
+  read files were deliberately swapped), and DESeq2 on its counts
   recovered exactly the genes simulated as changed. The ATAC run removed all mitochondrial
   reads and duplicates, and recovered 40 of 40 simulated peaks in the pooled call, with none
   called elsewhere.
@@ -102,15 +103,14 @@ For your own ENA/SRA study, download its run table with the ENA portal API (fiel
 ### Example profiles
 
 Each `config.yaml` is a generic single-species starting point. The `examples/` folders hold
-complete configs for the example study, built from its public ArrayExpress protocols. They show
-what a real cross-species set-up looks like:
+complete configs for the example study, built from the methods of its open-access paper. They
+show what a real cross-species set-up looks like:
 
 | Profile | Data | Set-up |
 |---|---|---|
-| [`rnaseq/examples/ciuba2025.yaml`](https://github.com/Delta-43/comparative-genomics-guides/blob/main/pipelines/rnaseq/examples/ciuba2025.yaml) | E-MTAB-13252 | All species on one masked hg38 consensus genome; STAR defaults |
-| [`chip_atac/examples/ciuba2025_<genome>.yaml`](https://github.com/Delta-43/comparative-genomics-guides/tree/main/pipelines/chip_atac/examples) | E-MTAB-13253/4/5 | ATAC-seq and H3K27ac/H3K4me3, one run per species on its own genome (`hg38`, `panTro6`, `rheMac10`), then compared by liftOver as in the [ATAC-seq guide](../guides/02-atac-seq.md#11-extension-comparing-species); bowtie2 defaults; no input controls |
-| [`chip_atac/examples/ciuba2025_consensus.yaml`](https://github.com/Delta-43/comparative-genomics-guides/blob/main/pipelines/chip_atac/examples/ciuba2025_consensus.yaml) | E-MTAB-13253/4/5 | Secondary route: all species on the consensus genome, for analyses that need shared coordinates from the start |
-| [`hic/examples/ciuba2025.yaml`](https://github.com/Delta-43/comparative-genomics-guides/blob/main/pipelines/hic/examples/ciuba2025.yaml) | E-MTAB-13259 | Each species on its own genome (hg38, panTro6) with Juicer defaults |
+| [`rnaseq/examples/ciuba2025.yaml`](https://github.com/Delta-43/comparative-genomics-guides/blob/main/pipelines/rnaseq/examples/ciuba2025.yaml) | E-MTAB-13252 | All species on one masked consensus genome (Ensembl names and release 101 annotation); uniquely mapped reads; strandedness per sample, because some deposited runs have read 1 and read 2 swapped |
+| [`chip_atac/examples/ciuba2025_<genome>.yaml`](https://github.com/Delta-43/comparative-genomics-guides/tree/main/pipelines/chip_atac/examples) | E-MTAB-13253/4/5 | ATAC-seq and H3K27ac/H3K4me3, one run per species on its own genome (`hg38`, `panTro6`, `rheMac10`), then compared by liftOver as in the [ATAC-seq guide](../guides/02-atac-seq.md#11-extension-comparing-species); fragments ≥ 40 bp; no input controls |
+| [`hic/examples/ciuba2025.yaml`](https://github.com/Delta-43/comparative-genomics-guides/blob/main/pipelines/hic/examples/ciuba2025.yaml) | E-MTAB-13259 | Each species on its own genome (hg38, panTro6) with Juicer defaults and MboI; TopDom at 25 kb |
 
 `consensus_genome/config.yaml` already builds this study's consensus (hg38 masked against panTro6
 and rheMac10). Copy a profile over `config.yaml` rather than passing it with `--configfile`:
@@ -144,8 +144,10 @@ choice below is a config option; the guides discuss the pros and cons of each.
 
 **RNA-seq**
 
-- Strandedness is **inferred from the data** (STAR `--quantMode GeneCounts` gives counts for
-  both strand orientations), not assumed. A mismatch with your config triggers a warning.
+- Strandedness is **inferred from the data** for each sample (STAR `--quantMode GeneCounts`
+  gives counts for both strand orientations), not assumed, and featureCounts counts each sample
+  with its own call. Samples that disagree (usually read 1 and read 2 swapped) and a mismatch with
+  a fixed `strandedness` in the config both trigger a warning.
 - featureCounts counts read pairs (`-p --countReadPairs`) on exons, summed per `gene_id`.
   Multi-mapping reads and reads overlapping two genes are not counted by default; `-O` / `-M`
   change that at the cost of some ambiguity.

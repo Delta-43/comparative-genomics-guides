@@ -1,15 +1,20 @@
 # ---------------------------------------------------------------------------------------------
 # Example profile: ATAC-seq / histone ChIP-seq of Ciuba et al. 2025, Cell Stem Cell 32:426-444
-# (doi:10.1016/j.stem.2024.12.011), human samples on the human genome (hg38).
+# (doi:10.1016/j.stem.2024.12.011, open access), human samples on the human genome (hg38).
 # ArrayExpress: E-MTAB-13253 (ATAC-seq), E-MTAB-13254 (H3K27ac), E-MTAB-13255 (H3K4me3).
-#
-# A worked example of a cross-species set-up, not a recommended default. The study's main route
-# for ATAC and ChIP: align each species to its OWN genome, call peaks there, then compare species
-# by lifting peaks over to hg38 with UCSC liftOver (guides/02-atac-seq.md, section 11). Where an
-# analysis needs all species in one coordinate system from the start, see ciuba2025_consensus.yaml.
 # Files for the three species: ciuba2025_hg38.yaml, ciuba2025_panTro6.yaml, ciuba2025_rheMac10.yaml.
-# Settings follow the public ArrayExpress protocols: 100 bp paired-end reads, bowtie2 with default
-# options, RPGC-normalised bigWigs. No ChIP input controls were deposited.
+#
+# A worked example of a cross-species set-up, not a recommended default. As in the paper, each
+# species is aligned to its OWN genome, peaks are called there, and species are then compared by
+# lifting 500 bp summit windows over with UCSC liftOver (-minMatch=0.5; guides/02-atac-seq.md,
+# section 11). Settings follow the paper's STAR Methods ("Pre-processing of the ATAC-Seq and ChIP-Seq
+# data"): Trim Galore '-q 30 --stringency 3 --length 30', bowtie2 '--very-sensitive -X 2000',
+# duplicate removal, fragments >= 40 bp, MACS2 '--nomodel', with peaks also called on each
+# species' pooled reads.
+# The ATAC runs were sequenced at 2x100 and 2x150 bp. No ChIP input controls were deposited.
+#
+# This profile also keeps the pipeline's standard MAPQ >= 30 filter, which the paper's methods do
+# not list. Set min_mapq: 0 to leave it out.
 #
 # This is a COMPLETE config. Copy it over config.yaml rather than passing it with --configfile:
 # Snakemake merges nested keys, so the default GRCh38 genome would stay in `genomes` and switch
@@ -30,25 +35,24 @@ assay: "atac"
 samples: "ciuba2025_data/atac_hg38/samples.tsv"
 outdir: "results_ciuba2025_atac_hg38"
 
-min_mapq: 30
-remove_duplicates: true
+min_mapq: 30                    # pipeline standard; not in the paper's methods
+remove_duplicates: true         # as in the paper (here with pair-aware samtools markdup)
 atac_shift: true
 use_controls: false             # no input/IgG libraries in the public deposit
-min_fragment_length: 0
+min_fragment_length: 40         # as in the paper (deepTools alignmentSieve --minFragmentLength 40)
 
 genomes:
   hg38:
     fasta: "../consensus_genome/results/genomes/hg38/hg38.fa"
     gtf: "resources/hg38.ncbiRefSeq.gtf"      # UCSC: goldenPath/hg38/bigZips/genes/ (enables the TSS plot)
     blacklist: "resources/hg38-blacklist.v2.bed"    # ENCODE blacklist (Amemiya et al. 2019)
-    effective_genome_size: 2820945813 # deepTools table: GRCh38, 100 bp reads
+    effective_genome_size: 2820945813  # deepTools table, GRCh38, 100 bp reads (150 bp: 2884242992)
 
 drop_chrom_regex: "^(chrM|MT|M|chrUn.*|Un.*|.*_random|.*_alt|.*_fix|KI[0-9].*|GL[0-9].*|JH[0-9].*|NW_.*)$"
 
-trim_galore_args: ""
-bowtie2_args:     ""            # bowtie2 default options, as in the public protocol. Note the
-                                # default -X 500 drops fragments > 500 bp (multi-nucleosome ATAC).
-macs2_args:       "-f BAMPE --keep-dup all"
+trim_galore_args: "-q 30 --stringency 3 --length 30"
+bowtie2_args:     "--very-sensitive -X 2000"     # -X 2000 keeps long (multi-nucleosome) fragments
+macs2_args:       "-f BAMPE --nomodel --keep-dup all"   # BAMPE uses real fragment sizes; dups already removed
 bigwig_binsize: 10
 ignore_for_normalization: "chrX chrY X Y"
 

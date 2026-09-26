@@ -126,38 +126,54 @@ rule star:
             "--readFilesCommand zcat --outFileNamePrefix {params.prefix} --outSAMtype BAM SortedByCoordinate "
             "--quantMode GeneCounts {params.extra} > {log} 2>&1 && samtools index -@ {threads} {output.bam}"
 
-# --- 4. Strandedness: inferred from STAR's per-strand gene counts, never assumed ------------------
+# --- 4. Strandedness: inferred per sample from STAR's per-strand gene counts, never assumed -------
+# Each sample gets its own call. Samples from one library prep should agree; when they don't, read 1
+# and read 2 were most likely swapped for some of them (e.g. when uploaded to a public archive).
 rule infer_strandedness:
     input:  expand(f"{OUT}/star/{{sample}}.{PRIMARY}.ReadsPerGene.out.tab", sample=SAMPLES)
     output: f"{OUT}/qc/strandedness.txt"
     run:
         # ReadsPerGene columns: gene, unstranded, read1-sense (= featureCounts -s 1), read2-sense (= -s 2)
-        fwd = rev = 0
-        for f in input:
+        rows = []
+        for sample, f in zip(SAMPLES, input):
+            fwd = rev = 0
             with open(f) as fh:
                 for line in fh:
                     if line.startswith("N_"):
                         continue
                     _, _, a, b = line.split("\t")
                     fwd += int(a); rev += int(b)
-        ratio = fwd / max(rev, 1)
-        call = 1 if ratio > 4 else 2 if ratio < 0.25 else 0
+            ratio = fwd / max(rev, 1)
+            rows.append((sample, 1 if ratio > 4 else 2 if ratio < 0.25 else 0, fwd, rev, ratio))
         with open(output[0], "w") as out:
-            out.write(f"{call}\n# -s1 counts={fwd} -s2 counts={rev} ratio(-s1/-s2)={ratio:.3f}\n")
-        if str(config.get("strandedness", "auto")) not in ("auto", str(call)):
-            print(f"WARNING: config strandedness={config['strandedness']} but data suggests -s {call} "
+            out.write("sample\tcall\ts1_counts\ts2_counts\tratio_s1_s2\n")
+            for sample, call, fwd, rev, ratio in rows:
+                out.write(f"{sample}\t{call}\t{fwd}\t{rev}\t{ratio:.3f}\n")
+        calls = {call for _, call, *_ in rows}
+        configured = str(config.get("strandedness", "auto"))
+        if len(calls) > 1:
+            groups = "; ".join(f"-s {c}: " + ", ".join(s for s, call, *_ in rows if call == c) for c in sorted(calls))
+            action = ("Each sample is counted with its own call" if configured == "auto"
+                      else f"All samples are counted with the configured -s {configured}")
+            print(f"WARNING: samples differ in strandedness ({groups}). Within one library prep this "
+                  f"usually means read 1 and read 2 are swapped for some samples. {action}; "
+                  f"check {output[0]}.")
+        if configured != "auto" and calls != {int(configured)}:
+            print(f"WARNING: config strandedness={configured} but the data suggest {sorted(calls)} "
                   f"(see {output[0]})")
 
-# "auto" -> read the inferred value at run time; otherwise use the configured value verbatim.
+# "auto" -> one value per sample, read from the table at run time (featureCounts takes a
+# comma-separated list in BAM order); otherwise the configured value applies to every sample.
 STRAND = str(config.get("strandedness", "auto"))
-STRAND_SHELL = f"$(head -n1 {OUT}/qc/strandedness.txt)" if STRAND == "auto" else STRAND
+STRAND_SHELL = (f"$(awk -F'\\t' 'NR>1 {{print $2}}' {OUT}/qc/strandedness.txt | paste -sd, -)"
+                if STRAND == "auto" else STRAND)
 
 # --- 5. Quantification -----------------------------------------------------------------------------
 rule featurecounts:
     input:  bams = expand(f"{OUT}/star/{{sample}}.{{{{genome}}}}.Aligned.sortedByCoord.out.bam", sample=SAMPLES),
             gtf = lambda w: GENOMES[w.genome]["gtf"], strand = f"{OUT}/qc/strandedness.txt"
     output: f"{OUT}/featureCounts/{{genome}}_gene_counts.txt"
-    params: strand = STRAND_SHELL,
+    params: strand = STRAND_SHELL,      # BAM order = SAMPLES order = strandedness.txt row order
             extra = config.get("featurecounts_args", "-p --countReadPairs -t exon -g gene_id")
     log:    f"{OUT}/logs/featureCounts/{{genome}}.log"
     conda:  "../envs/rnaseq.yaml"
