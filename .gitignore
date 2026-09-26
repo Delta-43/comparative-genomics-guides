@@ -16,3 +16,10 @@ _site/
 # Pipeline outputs and Snakemake state
 pipelines/**/results/
 .snakemake/
+
+# AI assistant notes and settings (local only)
+CLAUDE.md
+MEMORY.md
+PLAN.md
+TODO.md
+.claude/
