@@ -20,7 +20,7 @@ how to report problems.
 
 ## What these guides are
 
-A record of one practitioner's workflow for each assay, written up so others can follow,
+A record of [the author's](#about-the-author) workflow for each assay, written up so others can follow,
 compare and adapt it. They are **a reference, not an authoritative standard**: other valid
 approaches exist, and the right choices depend on your data. Where a common alternative exists, the
 guides name it. Check each tool's own documentation before relying on a setting.
@@ -28,6 +28,13 @@ guides name it. Check each tool's own documentation before relying on a setting.
 They are written for researchers who have (or are planning) a sequencing experiment. You don't
 have to be a bioinformatician. If you can use a terminal and have met R before, you can follow
 them.
+
+## About the author
+
+These guides were created by **Debadeep Chaudhury**. They are based on five years of experience as a
+bioinformatician during a PhD, and on hands-on research experience.
+
+[ORCID 0000-0002-9089-732X](https://orcid.org/0000-0002-9089-732X) · [Google Scholar](https://scholar.google.com/citations?user=zDcS-78AAAAJ) · [LinkedIn](https://www.linkedin.com/in/dchaudhury)
 
 ## What each guide covers
 

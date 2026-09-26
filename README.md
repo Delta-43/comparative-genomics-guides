@@ -17,6 +17,7 @@
 <p align="center">
   <a href="#-what-it-is">What it is</a> •
   <a href="#-who-its-for">Who it's for</a> •
+  <a href="#-author">Author</a> •
   <a href="#-the-guides">The guides</a> •
   <a href="#-project-status">Status</a> •
   <a href="#-quick-start">Quick Start</a> •
@@ -52,7 +53,7 @@ Researchers who have, or are planning, a sequencing experiment and want a docume
 example of one way to analyse it, to compare with their own approach and adapt. You don't have to
 be a bioinformatician.
 
-**A reference, not a standard.** The guides record one practitioner's workflow. Other valid
+**A reference, not a standard.** The guides record [the author's](#-author) workflow. Other valid
 approaches exist, and the right settings depend on your data, so check each tool's own
 documentation before relying on a choice made here.
 
@@ -64,6 +65,22 @@ documentation before relying on a choice made here.
 If either is new to you, the free, beginner-friendly [Harvard Chan Bioinformatics Core
 training materials](https://hbctraining.github.io/main/) cover both. They inspired the structure
 of these guides, which link to them wherever they go deeper.
+
+## 👤 Author
+
+These guides were created by **Debadeep Chaudhury**. They are based on five years of experience as a
+bioinformatician during a PhD, and on hands-on research experience, written up so that others can
+follow, compare and adapt the same workflows.
+
+<p>
+  <a href="https://orcid.org/0000-0002-9089-732X"><img src="https://img.shields.io/badge/ORCID-0000--0002--9089--732X-A6CE39?logo=orcid&logoColor=white" alt="ORCID 0000-0002-9089-732X"></a>
+  <a href="https://scholar.google.com/citations?user=zDcS-78AAAAJ"><img src="https://img.shields.io/badge/Google%20Scholar-profile-4285F4?logo=googlescholar&logoColor=white" alt="Google Scholar profile"></a>
+  <a href="https://www.linkedin.com/in/dchaudhury"><img src="https://img.shields.io/badge/LinkedIn-dchaudhury-0A66C2" alt="LinkedIn profile"></a>
+</p>
+
+- **ORCID** — [0000-0002-9089-732X](https://orcid.org/0000-0002-9089-732X)
+- **Google Scholar** — [publications and citations](https://scholar.google.com/citations?user=zDcS-78AAAAJ)
+- **LinkedIn** — [linkedin.com/in/dchaudhury](https://www.linkedin.com/in/dchaudhury)
 
 ## 📚 The guides
 
